@@ -16,465 +16,472 @@
  *
  * @param {Number} dispParams display parameters
  */
-var StateController = function ( dispParams ) {
+var StateController = function (dispParams) {
 
-	// Alias for accessing this from a closure
-	var _this = this;
+    // Alias for accessing this from a closure
+    var _this = this;
 
-	// "state" object is a place where you store variables to render a scene.
-	//
-	// clipNear: z position of near clipping plane
-	// clipFar: z position of far clipping plane
-	// modelTranslation: (x,y,z) translations for teapots
-	// modelRotation: (x,y) rotations for models
-	// viewerPosition: (x,y,z) positions of a viewer
-	// viewerTarget: the position where a viewer is looking
-	// perspectiveMat switch between perspective
-	this.state = {
+    // "state" object is a place where you store variables to render a scene.
+    //
+    // clipNear: z position of near clipping plane
+    // clipFar: z position of far clipping plane
+    // modelTranslation: (x,y,z) translations for teapots
+    // modelRotation: (x,y) rotations for models
+    // viewerPosition: (x,y,z) positions of a viewer
+    // viewerTarget: the position where a viewer is looking
+    // perspectiveMat switch between perspective
+    this.state = {
 
-		clipNear: 1.0,
+        clipNear: 1.0,
 
-		clipFar: 10000.0,
+        clipFar: 10000.0,
 
-		modelTranslation: new THREE.Vector3(),
+        modelTranslation: new THREE.Vector3(),
 
-		modelRotation: new THREE.Vector2(),
+        modelRotation: new THREE.Vector2(),
 
-		viewerPosition:
-			new THREE.Vector3( 0, 0, dispParams.distanceScreenViewer ),
+        viewerPosition:
+            new THREE.Vector3(0, 0, dispParams.distanceScreenViewer),
 
-		viewerTarget: new THREE.Vector3(),
+        viewerTarget: new THREE.Vector3(),
 
-		perspectiveMat: true,
+        perspectiveMat: true,
 
-		topView: false,
+        topView: false,
 
-	};
-
-
-	// Constants for distinguishing which button is engaged.
-	const MODEL_TRANSFORM = 0;
-
-	const VIEWER_POSITION = 1;
-
-	const VIEWER_TARGET = 2;
-
-	const CLIPNEAR_CTRL = 3;
-
-	// a variable to find which button is engaged
-	var controller = NaN;
-
-	// A variable to store the mouse position on the previous frame.
-	var previousPosition = new THREE.Vector2();
-
-	// A variable to check the click status
-	var clickHold = false;
+    };
 
 
+    // Constants for distinguishing which button is engaged.
+    const MODEL_TRANSFORM = 0;
 
-	/* Private Functions */
+    const VIEWER_POSITION = 1;
 
-	// Here, we define callback functions for event listeners set by jQuery.
-	// For example, onClick function is called when the mouse is clicked
-	// somewhere in the window.
-	// See at the bottom of this class to see the usages.
+    const VIEWER_TARGET = 2;
 
-	// This function is called when the mouse click is engaged.
-	//
-	// INPUT
-	// x: the x position of the mouse cursor
-	// y: the x position of the mouse cursor
-	function onClick( x, y ) {
+    const CLIPNEAR_CTRL = 3;
 
-		previousPosition.set( x, y );
+    // a variable to find which button is engaged
+    var controller = NaN;
 
-		clickHold = true;
+    // A variable to store the mouse position on the previous frame.
+    var previousPosition = new THREE.Vector2();
 
-	}
-
-	// This function is called when the mouse click is released, or the mouse
-	// cursor goes to the outside of the window.
-	function releaseClick() {
-
-		clickHold = false;
-
-	}
-
-	// This function is called when the mouse cursor moves.
-	//
-	// INPUT
-	// e: jQuery event
-	// x: the x position of the mouse cursor
-	// y: the x position of the mouse cursor
-	function onMove( e, x, y ) {
-
-		// Check the mouse is clicked. If not, do nothing.
-		if ( ! clickHold ) return;
-
-		var movement = computeMovement( x, y, previousPosition );
+    // A variable to check the click status
+    var clickHold = false;
 
 
-		// Map mouse movements to matrix parameters
 
-		// Check if the model control button is clicked.
-		if ( controller === MODEL_TRANSFORM ) {
+    /* Private Functions */
 
-			updateModelParams( e, movement );
+    // Here, we define callback functions for event listeners set by jQuery.
+    // For example, onClick function is called when the mouse is clicked
+    // somewhere in the window.
+    // See at the bottom of this class to see the usages.
 
-		}
+    // This function is called when the mouse click is engaged.
+    //
+    // INPUT
+    // x: the x position of the mouse cursor
+    // y: the x position of the mouse cursor
+    function onClick(x, y) {
 
-		// Check if the viewer position control button is clicked.
-		if ( controller === VIEWER_POSITION ) {
+        previousPosition.set(x, y);
 
-			updateViewPosition( e, movement );
+        clickHold = true;
 
-		}
+    }
 
-		// Check if the viewer target control button is clicked.
-		if ( controller === VIEWER_TARGET ) {
+    // This function is called when the mouse click is released, or the mouse
+    // cursor goes to the outside of the window.
+    function releaseClick() {
 
-			updateViewTarget( e, movement );
+        clickHold = false;
 
-		}
+    }
 
-		// Check if the clipping control button is clicked.
-		if ( controller === CLIPNEAR_CTRL ) {
+    // This function is called when the mouse cursor moves.
+    //
+    // INPUT
+    // e: jQuery event
+    // x: the x position of the mouse cursor
+    // y: the x position of the mouse cursor
+    function onMove(e, x, y) {
 
-			updateProjectionParams( e, movement );
+        // Check the mouse is clicked. If not, do nothing.
+        if (!clickHold) return;
 
-		}
+        var movement = computeMovement(x, y, previousPosition);
 
-	}
 
-	// A function to compute the mouse movement between frames.
-	// Do not forget to update previousPosition variable.
-	//
-	// INPUT
-	// x: x position of a mouse cursor in jQuery's coordinate
-	// y: y position of a mouse cursor in jQuery's coordinate
-	// previousPosition: the coordinate of the mouse pointer in jQuery's
-	//	coordinate at the previous frame as THREE.Vector2.
-	//
-	// OUTPUT
-	// the mouse movement between frames in Three's coordinate as THREE.Vector2
-	function computeMovement( x, y, previousPosition ) {
+        // Map mouse movements to matrix parameters
 
-		/* TODO (2.1.1.1) Mouse Movement */
+        // Check if the model control button is clicked.
+        if (controller === MODEL_TRANSFORM) {
 
-		return new THREE.Vector2();
+            updateModelParams(e, movement);
 
-	}
+        }
 
-	// A function to map mouse movements to high level model matrix parameters.
-	// This function should update "modelTranslation" and "modelRotation" in the
-	// "state" variable.
-	//
-	// INPUT
-	// e: jQuery event
-	// movement: the mouse movement computed by computeMovement() function
-	//
-	// NOTE (Important!):
-	// In JavaScript, if you want to access "this.state" from a closure, you need
-	// to make an alias for "this" and access "state" from this alias because
-	// "this" refers to the closure itself if you use "this" inside the closure.
-	// We have already defined the alias as "_this" at the top of this class.
-	// We follow this convention throughout homework.
-	function updateModelParams( e, movement ) {
+        // Check if the viewer position control button is clicked.
+        if (controller === VIEWER_POSITION) {
 
-		/* TODO
-		 * (2.1.1.2) Mapping Mouse Movement to Matrix Parameters
-		 * (2.1.2) Model Rotation
-		 */
+            updateViewPosition(e, movement);
 
-		var ctrlKey = e.metaKey // for Mac's command key
-			|| ( navigator.platform.toUpperCase().indexOf( "MAC" ) == - 1
-				&& e.ctrlKey );
+        }
 
-		// Check if the shift-key is pressed
-		if ( e.shiftKey && ! ctrlKey ) {
+        // Check if the viewer target control button is clicked.
+        if (controller === VIEWER_TARGET) {
 
+            updateViewTarget(e, movement);
+
+        }
+
+        // Check if the clipping control button is clicked.
+        if (controller === CLIPNEAR_CTRL) {
+
+            updateProjectionParams(e, movement);
+
+        }
+
+    }
+
+    // A function to compute the mouse movement between frames.
+    // Do not forget to update previousPosition variable.
+    //
+    // INPUT
+    // x: x position of a mouse cursor in jQuery's coordinate
+    // y: y position of a mouse cursor in jQuery's coordinate
+    // previousPosition: the coordinate of the mouse pointer in jQuery's
+    //	coordinate at the previous frame as THREE.Vector2.
+    //
+    // OUTPUT
+    // the mouse movement between frames in Three's coordinate as THREE.Vector2
+    function computeMovement(x, y, previousPosition) {
+
+        mdiff = new THREE.Vector2(  x - previousPosition.x,
+                                    y - previousPosition.y)
+        previousPosition.add(mdiff)
+        return mdiff;
+
+    }
+
+    // A function to map mouse movements to high level model matrix parameters.
+    // This function should update "modelTranslation" and "modelRotation" in the
+    // "state" variable.
+    //
+    // INPUT
+    // e: jQuery event
+    // movement: the mouse movement computed by computeMovement() function
+    //
+    // NOTE (Important!):
+    // In JavaScript, if you want to access "this.state" from a closure, you need
+    // to make an alias for "this" and access "state" from this alias because
+    // "this" refers to the closure itself if you use "this" inside the closure.
+    // We have already defined the alias as "_this" at the top of this class.
+    // We follow this convention throughout homework.
+    function updateModelParams(e, movement) {
+
+        /* TODO
+         * (2.1.1.2) Mapping Mouse Movement to Matrix Parameters
+         * (2.1.2) Model Rotation
+         */
+
+        var ctrlKey = e.metaKey // for Mac's command key
+            || (navigator.platform.toUpperCase().indexOf("MAC") == - 1
+                && e.ctrlKey);
+
+        // Check if the shift-key is pressed
+        if (e.shiftKey && !ctrlKey) {
+
+            // XY translation
+            _this.state.modelTranslation.x += movement.x
+            _this.state.modelTranslation.y -= movement.y
+
+        } else if (!e.shiftKey && ctrlKey) {
+
+            // Z translation
+            _this.state.modelTranslation.z -= movement.y
+
+        } else {
+			rotInc = new THREE.Vector2(movement.y, movement.x);
+			_this.state.modelRotation = _this.state.modelRotation.add(rotInc);
+        }
+
+    }
+
+
+    // A function to map mouse movements to the viewer position parameter.
+    // This function should update "viewerPosition" in the "state" variable.
+    //
+    // INPUT
+    // e: jQuery event
+    // movement: the mouse movement computed by computeMovement() function
+    function updateViewPosition(e, movement) {
+        /* TODO (2.2.1) Move viewer position */
+
+        var ctrlKey = e.metaKey // for Mac's command key
+            || (navigator.platform.toUpperCase().indexOf("MAC") == - 1
+                && e.ctrlKey);
+
+        // Check if shift-key pressed
+		let viewInc;
+        if (!ctrlKey) {
 			// XY translation
-
-		} else if ( ! e.shiftKey && ctrlKey ) {
-
+			// viewInc = new THREE.Vector3(movement.x, -movement.y, 0);
+            _this.state.viewerPosition.x += movement.x
+            _this.state.viewerPosition.y -= movement.y
+        } else {
 			// Z translation
+            // viewInc = new THREE.Vector3(0, 0, -movement.y);
+            _this.state.viewerPosition.z -= movement.y
+        }
+		// _this.state.viewerPosition = new THREE.Vector3().addVectors(_this.state.viewerPosition, viewInc);
 
+    }
 
-		} else {
 
-			// Rotation
+    // A function to map mouse movements to the viewer target parameter.
+    // This function should update "viewerTarget" in the "state" variable.
+    //
+    // INPUT
+    // e: jQuery event
+    // movement: the mouse movement computed by computeMovement() function
+    function updateViewTarget(e, movement) {
 
-		}
+        /* TODO (2.2.2) Move viewer target */
 
-	}
+        var ctrlKey = e.metaKey // for Mac's command key
+            || (navigator.platform.toUpperCase().indexOf("MAC") == - 1
+                && e.ctrlKey);
+				
+		let viewInc;
+        // Check if shift-key pressed
+        if (!ctrlKey) {
+            // XY translation
+			viewInc = new THREE.Vector3(movement.x, -movement.y, 0);
 
+        } else {
+            // Z translation
+			viewInc = new THREE.Vector3(0, 0, -movement.y);
+        }
+		_this.state.viewerTarget = new THREE.Vector3().addVectors(_this.state.viewerTarget, viewInc);
 
-	// A function to map mouse movements to the viewer position parameter.
-	// This function should update "viewerPosition" in the "state" variable.
-	//
-	// INPUT
-	// e: jQuery event
-	// movement: the mouse movement computed by computeMovement() function
-	function updateViewPosition( e, movement ) {
+    }
 
-		/* TODO (2.2.1) Move viewer position */
 
-		var ctrlKey = e.metaKey // for Mac's command key
-			|| ( navigator.platform.toUpperCase().indexOf( "MAC" ) == - 1
-				&& e.ctrlKey );
+    // A function to map mouse movements to the projection matrix parameters.
+    // This function should update "clipNear" in the "state" variable.
+    //
+    // INPUT
+    // e: jQuery event
+    // movement: the mouse movement computed by computeMovement() function
+    function updateProjectionParams(e, movement) {
 
-		// Check if shift-key pressed
-		if ( ! ctrlKey ) {
+        /* TODO (2.3.1) Implement Perspective Transform */
+		_this.state.clipNear -= movement.y;
+		_this.state.clipNear = Math.min(_this.state.clipNear, 1);
 
-			// XY translation
+    }
 
-		} else {
 
-			// Z translation
+    // Display the scene parameters in the browser
+    function display() {
 
-		}
+        $("#positionVal").html(
 
-	}
+            "<p>Translation: " +
+            vector3ToString(this.state.modelTranslation) + "</p>" +
+            "<p>Rotation: " +
+            vector2ToString(this.state.modelRotation) + "</p>" +
+            "<p>Viewer position: " +
+            vector3ToString(this.state.viewerPosition) + "</p>" +
+            "<p>Viewer target: " +
+            vector3ToString(this.state.viewerTarget) + "</p>"
 
+        );
 
-	// A function to map mouse movements to the viewer target parameter.
-	// This function should update "viewerTarget" in the "state" variable.
-	//
-	// INPUT
-	// e: jQuery event
-	// movement: the mouse movement computed by computeMovement() function
-	function updateViewTarget( e, movement ) {
+    }
 
-		/* TODO (2.2.2) Move viewer target */
 
-		var ctrlKey = e.metaKey // for Mac's command key
-			|| ( navigator.platform.toUpperCase().indexOf( "MAC" ) == - 1
-				&& e.ctrlKey );
 
-		// Check if shift-key pressed
-		if ( ! ctrlKey ) {
+    /* Event listeners */
 
-			// XY translation
+    $(".renderCanvas").on({
 
-		} else {
+        "mousedown": function (e) {
 
-			// Z translation
+            onClick(e.pageX, e.pageY);
 
-		}
+        },
 
-	}
+        "mousemove": function (e) {
 
+            onMove(e, e.pageX, e.pageY);
 
-	// A function to map mouse movements to the projection matrix parameters.
-	// This function should update "clipNear" in the "state" variable.
-	//
-	// INPUT
-	// e: jQuery event
-	// movement: the mouse movement computed by computeMovement() function
-	function updateProjectionParams( e, movement ) {
+            e.preventDefault();
 
-		/* TODO (2.3.1) Implement Perspective Transform */
+        },
 
-	}
+        "mouseout": function (e) {
 
+            releaseClick();
 
-	// Display the scene parameters in the browser
-	function display() {
+        },
 
-		$( "#positionVal" ).html(
+        "mouseup": function (e) {
 
-			"<p>Translation: " +
-				vector3ToString( this.state.modelTranslation ) + "</p>" +
-			"<p>Rotation: " +
-				vector2ToString( this.state.modelRotation ) + "</p>" +
-			"<p>Viewer position: " +
-				vector3ToString( this.state.viewerPosition ) + "</p>" +
-			"<p>Viewer target: " +
-				vector3ToString( this.state.viewerTarget ) + "</p>"
+            releaseClick();
 
-		);
+        },
 
-	}
+    });
 
 
+    $("#modelBtn").click(function () {
 
-	/* Event listeners */
+        controller = MODEL_TRANSFORM;
 
-	$( ".renderCanvas" ).on( {
+        $("#modelBtn").css("background-color", "teal");
 
-		"mousedown": function ( e ) {
+        $("#viewerPositionBtn").css("background-color", cardinalColor);
 
-			onClick( e.pageX, e.pageY );
+        $("#viewerTargetBtn").css("background-color", cardinalColor);
 
-		},
+        $("#clipNearBtn").css("background-color", cardinalColor);
 
-		"mousemove": function ( e ) {
+    });
 
-			onMove( e, e.pageX, e.pageY );
 
-			e.preventDefault();
+    $("#viewerPositionBtn").click(function () {
 
-		},
+        if (!_this.state.topView) {
 
-		"mouseout": function ( e ) {
+            controller = VIEWER_POSITION;
 
-			releaseClick();
+            $("#modelBtn").css("background-color", cardinalColor);
 
-		},
+            $("#viewerPositionBtn").css("background-color", "teal");
 
-		"mouseup": function ( e ) {
+            $("#viewerTargetBtn").css("background-color", cardinalColor);
 
-			releaseClick();
+            $("#clipNearBtn").css("background-color", cardinalColor);
 
-		},
+        }
 
-	} );
+    });
 
 
-	$( "#modelBtn" ).click( function () {
+    $("#viewerTargetBtn").click(function () {
 
-		controller = MODEL_TRANSFORM;
+        if (!_this.state.topView) {
 
-		$( "#modelBtn" ).css( "background-color", "teal" );
+            controller = VIEWER_TARGET;
 
-		$( "#viewerPositionBtn" ).css( "background-color", cardinalColor );
+            $("#modelBtn").css("background-color", cardinalColor);
 
-		$( "#viewerTargetBtn" ).css( "background-color", cardinalColor );
+            $("#viewerPositionBtn").css("background-color", cardinalColor);
 
-		$( "#clipNearBtn" ).css( "background-color", cardinalColor );
+            $("#viewerTargetBtn").css("background-color", "teal");
 
-	} );
+            $("#clipNearBtn").css("background-color", cardinalColor);
 
+        }
 
-	$( "#viewerPositionBtn" ).click( function () {
+    });
 
-		if ( ! _this.state.topView ) {
+    $("#clipNearBtn").click(function () {
 
-			controller = VIEWER_POSITION;
+        if (!_this.state.topView) {
 
-			$( "#modelBtn" ).css( "background-color", cardinalColor );
+            controller = CLIPNEAR_CTRL;
 
-			$( "#viewerPositionBtn" ).css( "background-color", "teal" );
+            $("#modelBtn").css("background-color", cardinalColor);
 
-			$( "#viewerTargetBtn" ).css( "background-color", cardinalColor );
+            $("#viewerPositionBtn").css("background-color", cardinalColor);
 
-			$( "#clipNearBtn" ).css( "background-color", cardinalColor );
+            $("#viewerTargetBtn").css("background-color", cardinalColor);
 
-		}
+            $("#clipNearBtn").css("background-color", "teal");
 
-	} );
+        }
 
+    });
 
-	$( "#viewerTargetBtn" ).click( function () {
 
-		if ( ! _this.state.topView ) {
+    $("#projectionMatBtn").click(function () {
 
-			controller = VIEWER_TARGET;
+        _this.state.perspectiveMat = !_this.state.perspectiveMat;
 
-			$( "#modelBtn" ).css( "background-color", cardinalColor );
+        if (_this.state.perspectiveMat) {
 
-			$( "#viewerPositionBtn" ).css( "background-color", cardinalColor );
+            $("#projectionMatBtn").html("Perspective Matrix");
 
-			$( "#viewerTargetBtn" ).css( "background-color", "teal" );
+        } else {
 
-			$( "#clipNearBtn" ).css( "background-color", cardinalColor );
+            $("#projectionMatBtn").html("Orthographic Matrix");
 
-		}
+        }
 
-	} );
+    });
 
-	$( "#clipNearBtn" ).click( function () {
+    // Scene switching system
+    $("html").keydown(function (e) {
 
-		if ( ! _this.state.topView ) {
+        /* Change the scene if space is pressed. */
+        if (e.which === 32) {
 
-			controller = CLIPNEAR_CTRL;
+            _this.state.topView = !_this.state.topView;
 
-			$( "#modelBtn" ).css( "background-color", cardinalColor );
+            if (_this.state.topView) {
 
-			$( "#viewerPositionBtn" ).css( "background-color", cardinalColor );
+                $("#modelBtn").css("background-color", "teal");
 
-			$( "#viewerTargetBtn" ).css( "background-color", cardinalColor );
+                $("#viewerPositionBtn").css({ "background-color": cardinalColor, "opacity": 0.1 });
 
-			$( "#clipNearBtn" ).css( "background-color", "teal" );
+                $("#viewerTargetBtn").css({ "background-color": cardinalColor, "opacity": 0.1 });
 
-		}
+                $("#clipNearBtn").css({ "background-color": cardinalColor, "opacity": 0.1 });
 
-	} );
+                $("#projectionMatBtn").css({ "background-color": cardinalColor, "opacity": 0.1 });
 
+                controller = MODEL_TRANSFORM;
 
-	$( "#projectionMatBtn" ).click( function () {
+            } else {
 
-		_this.state.perspectiveMat = ! _this.state.perspectiveMat;
+                $("#viewerPositionBtn").css("opacity", 1.0);
 
-		if ( _this.state.perspectiveMat ) {
+                $("#viewerTargetBtn").css("opacity", 1.0);
 
-			$( "#projectionMatBtn" ).html( "Perspective Matrix" );
+                $("#clipNearBtn").css("opacity", 1.0);
 
-		} else {
+                $("#projectionMatBtn").css("opacity", 1.0);
 
-			$( "#projectionMatBtn" ).html( "Orthographic Matrix" );
+            }
 
-		}
+        }
 
-	} );
+    });
 
-	// Scene switching system
-	$( "html" ).keydown( function ( e ) {
 
-		/* Change the scene if space is pressed. */
-		if ( e.which === 32 ) {
+    /* Expose as public functions */
 
-			_this.state.topView = ! _this.state.topView;
+    this.onClick = onClick;
 
-			if ( _this.state.topView ) {
+    this.releaseClick = releaseClick;
 
-				$( "#modelBtn" ).css( "background-color", "teal" );
+    this.onMove = onMove;
 
-				$( "#viewerPositionBtn" ).css( { "background-color": cardinalColor, "opacity": 0.1 } );
+    this.computeMovement = computeMovement;
 
-				$( "#viewerTargetBtn" ).css( { "background-color": cardinalColor, "opacity": 0.1 } );
+    this.updateModelParams = updateModelParams;
 
-				$( "#clipNearBtn" ).css( { "background-color": cardinalColor, "opacity": 0.1 } );
+    this.updateViewPosition = updateViewPosition;
 
-				$( "#projectionMatBtn" ).css( { "background-color": cardinalColor, "opacity": 0.1 } );
+    this.updateViewTarget = updateViewTarget;
 
-				controller = MODEL_TRANSFORM;
+    this.updateProjectionParams = updateProjectionParams;
 
-			} else {
-
-				$( "#viewerPositionBtn" ).css( "opacity", 1.0 );
-
-				$( "#viewerTargetBtn" ).css( "opacity", 1.0 );
-
-				$( "#clipNearBtn" ).css( "opacity", 1.0 );
-
-				$( "#projectionMatBtn" ).css( "opacity", 1.0 );
-
-			}
-
-		}
-
-	} );
-
-
-	/* Expose as public functions */
-
-	this.onClick = onClick;
-
-	this.releaseClick = releaseClick;
-
-	this.onMove = onMove;
-
-	this.computeMovement = computeMovement;
-
-	this.updateModelParams = updateModelParams;
-
-	this.updateViewPosition = updateViewPosition;
-
-	this.updateViewTarget = updateViewTarget;
-
-	this.updateProjectionParams = updateProjectionParams;
-
-	this.display = display;
+    this.display = display;
 
 };
