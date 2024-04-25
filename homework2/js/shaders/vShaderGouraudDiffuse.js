@@ -59,12 +59,28 @@ void main() {
 
 	// Compute ambient reflection
 	vec3 ambientReflection = material.ambient * ambientLightColor;
-
 	vColor = ambientReflection;
 
-	gl_Position =
-		projectionMat * modelViewMat * vec4( position, 1.0 );
+    // Compute light source reflections
+	for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+		PointLight light = pointLights[i];
+        vec4 pointPositionView = modelViewMat * vec4( position, 1.0 );
+        vec4 lightPositionView = viewMat * vec4( light.position, 1.0 );
+        vec3 lightVector = lightPositionView.xyz - pointPositionView.xyz;
+        float d = length(lightVector);
+        vec3 lightVectorNormalized = lightVector / d;
+        float attFactor = 1. / (attenuation[0] + attenuation[1] * d + attenuation[2] * d * d);
 
+        // Compute diffuse reflections
+        vec3 diffuseReflection;
+        vec3 normalView = normalMat * normal;
+        float angle = dot(lightVectorNormalized, normalView);
+        diffuseReflection = light.color * material.diffuse * max(angle, 0.);
+		
+		vColor += attFactor * (diffuseReflection);
+    }
+
+    gl_Position = projectionMat * modelViewMat * vec4( position, 1.0 );
 }
 ` );
 

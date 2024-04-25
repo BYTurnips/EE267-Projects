@@ -21,7 +21,6 @@ varying vec3 vColor; // Color at a fragment
 void main() {
 
 	gl_FragColor = vec4( vColor, 1.0 );
-
 }
 ` );
 

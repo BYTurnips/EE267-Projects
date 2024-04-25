@@ -84,8 +84,7 @@ var StateController = function ( dispParams ) {
 			shininess: 120.0,
 
 		},
-
-		attenuation: new THREE.Vector3( 2.0, 0.0, 0.0 ),
+		attenuation: new THREE.Vector3( 2.0, 0.0, 0.001 ),
 
 	};
 

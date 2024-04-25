@@ -59,12 +59,49 @@ void main() {
 
 	// Compute ambient reflection
 	vec3 ambientReflection = material.ambient * ambientLightColor;
-
 	vColor = ambientReflection;
 
-	gl_Position =
-		projectionMat * modelViewMat * vec4( position, 1.0 );
+    // Compute light source reflections
+	for (int i = 0; i < NUM_POINT_LIGHTS; i++) {
+		PointLight light = pointLights[i];
+        vec4 pointPositionView = modelViewMat * vec4( position, 1.0 );
+        vec4 lightPositionView = viewMat * vec4( light.position, 1.0 );
+        vec3 lightVector = lightPositionView.xyz - pointPositionView.xyz;
 
+        float dist = length(lightVector);
+        vec3 lightVectorNormalized = lightVector / dist;
+
+        float constAtt = attenuation[0];
+        float linAtt = attenuation[1] * dist;
+        float quadAtt = attenuation[2] * dist * dist;
+        float attFactor = 1. / (constAtt + linAtt + quadAtt);
+
+        vec3 normalView = normalMat * normal;
+        
+
+        // Compute diffuse reflections
+        vec3 diffuseReflection;
+        float simLightNormal = max(dot(lightVectorNormalized, normalView), 0.);
+        vec3 reflColorDiffuse = light.color * material.diffuse;
+
+        diffuseReflection = reflColorDiffuse * simLightNormal;
+
+        // Compute specular reflections
+        vec3 specularReflection;
+        vec3 perfectReflectView = reflect(- lightVectorNormalized, normalView);
+        vec3 cameraView = -pointPositionView.xyz;
+        cameraView = cameraView / length(pointPositionView.xyz);
+
+        float simReflView = max(dot(perfectReflectView, cameraView), 0.0);
+        vec3 reflColorSpecular = light.color * material.specular;
+
+        specularReflection = reflColorSpecular * 
+            pow(simReflView, material.shininess);
+		
+		vColor += attFactor * (diffuseReflection + specularReflection);
+    }
+
+    gl_Position = projectionMat * modelViewMat * vec4( position, 1.0 );
 }
 ` );
 
