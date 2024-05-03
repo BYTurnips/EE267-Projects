@@ -70,7 +70,7 @@ var StateController = function ( dispParams ) {
 		attenuation: new THREE.Vector3( 2.0, 0.0, 0.0 ),
 
 		/* TODO (2.2.3) Update this parameter with your values  */
-		lensDistortion: new THREE.Vector2( 0, 0 ),
+        lensDistortion: new THREE.Vector2( 2.30, 1.0 ),
 
 	};
 
@@ -246,13 +246,13 @@ var StateController = function ( dispParams ) {
 
 			case 52: /* Increase K_2: Key 4 */
 
-				lensDistortion.y += 0.01;
+				lensDistortion.y += 0.05;
 
 				break;
 
 			case 53: /* Decrease K_2: Key 5 */
 
-				lensDistortion.y -= 0.01;
+				lensDistortion.y -= 0.05;
 
 				break;
 

@@ -48,15 +48,23 @@ const float searchRad = 11.0;
 
 
 // Compute the distance to fragment in [mm]
-// p: texture coordinate of a fragment / a gaze position
+// p: texture coordinate of a fragment / a gaze position (in normalized coords)
 //
 // Note: GLSL is column major
 float distToFrag( vec2 p ) {
 
 	/* TODO (2.3.1) Distance to Fragment */
+	float xNDC = 2. * p.x - 1.;
+	float yNDC = 2. * p.y - 1.;
+	float zNDC = 2. * texture2D(depthMap, p).x - 1.;
 
-	return 0.0;
+	float wCLIP = projectionMat[3][2] / 
+                    (zNDC - (projectionMat[2][2] / projectionMat[2][3]));
+	vec4 pCLIP = vec4(xNDC * wCLIP, yNDC * wCLIP, zNDC * wCLIP, wCLIP);
+	vec3 vVIEW = (invProjectionMat * pCLIP).xyz;
 
+	return length(vVIEW);
+    // return -vVIEW.z;
 }
 
 
@@ -64,27 +72,43 @@ float distToFrag( vec2 p ) {
 // fragDist: distance to current fragment in [mm]
 // focusDist: distance to focus plane in [mm]
 float computeCoC( float fragDist, float focusDist ) {
-
-	/* TODO (2.3.2) Circle of Confusion Computation */
-
-	return 0.0;
-
+	return pupilDiameter * abs(fragDist - focusDist) / fragDist;
 }
 
 
 // compute depth of field blur and return color at current fragment
 vec3 computeBlur() {
+	float focusDist = distToFrag(gazePosition / windowSize);
+    float fragDist = distToFrag(textureCoords);
+	float c = computeCoC(fragDist, focusDist);
 
-	/* TODO (2.3.3) Retinal Blur */
+    vec3 color = vec3(0.0);
+	float count = 0.0;
+	for (float i = -searchRad; i <= searchRad; i++) {
+		for (float j = -searchRad; j <= searchRad; j++) {
+			if (sqrt(i * i + j * j) > min(c / 2. / pixelPitch, searchRad)) {
+				continue; // if outside the circle of confusion
+			}
 
-	return vec3( 0.0 );
+			vec2 shiftCoords = textureCoords;
+            shiftCoords.x += i / windowSize.x;
+            shiftCoords.y += j / windowSize.y;
+            shiftCoords = clamp(shiftCoords, vec2(0.0), vec2(1.0));
+
+			color += texture2D( textureMap,  shiftCoords ).xyz;
+			count += 1.0;
+		}
+	}
+	color = color / count;
+	return color;
 }
 
 
 void main() {
+	gl_FragColor = vec4(computeBlur(), 1.0);
 
-	gl_FragColor = texture2D( textureMap,  textureCoords );
-
+    // gl_FragColor = texture2D( textureMap, textureCoords);
+    // gl_FragColor.w = texture2D( depthMap, textureCoords).x;
 }
 ` );
 

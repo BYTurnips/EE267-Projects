@@ -38,9 +38,16 @@ uniform vec2 K;
 uniform float distLensScreen;
 
 void main() {
-
-	gl_FragColor = texture2D( map, textureCoords );
-
+    vec2 originPreCoords = textureCoords - centerCoordinate;
+    float r = length(originPreCoords);
+    vec2 originPostCoords = originPreCoords;
+    originPostCoords *= 1. + K[0] * pow(r, 2.) + K[1] * pow(r, 4.);
+    vec2 correctedCoords = originPostCoords + centerCoordinate;
+	gl_FragColor = texture2D( map, correctedCoords );
+    if (correctedCoords.x > 1.0 || correctedCoords.y > 1.0 ||
+        correctedCoords.x < 0.0 || correctedCoords.y < 0.0) {
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    }
 }
 ` );
 

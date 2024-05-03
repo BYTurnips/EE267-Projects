@@ -52,9 +52,58 @@ uniform float outerBlurKernel[int(outerKernelRad)*2+1];
 
 
 void main() {
+    float ecc = length(textureCoords * windowSize - gazePosition) * pixelVA;
+    // vec4 interim = texture2D( textureMap,  textureCoords );
+    // interim.w = (ecc < e1) ? 1. : ((ecc < e2) ? 0.8 : 0.5);
 
-	gl_FragColor = texture2D( textureMap,  textureCoords );
+    vec4 fragColor = vec4(0.0);
 
+    if (ecc < e1) {
+        fragColor = texture2D( textureMap,  textureCoords );
+    }
+    else if (ecc < e2) {
+        float totalcontrib = 0.0;
+
+        for (int i = 0; i < int(middleKernelRad)*2+1; i++) {
+            for (int j = 0; j < int(middleKernelRad)*2+1; j++) {
+                float attenuation = middleBlurKernel[i] * 
+                                    middleBlurKernel[j];
+                
+                vec2 shiftCoords = textureCoords;
+                shiftCoords.x += (float(i) - middleKernelRad) / windowSize.x;
+                shiftCoords.y += (float(j) - middleKernelRad) / windowSize.y;
+                shiftCoords = clamp(shiftCoords, vec2(0.0), vec2(1.0));
+
+                vec4 shiftColor = texture2D( textureMap,  shiftCoords );
+
+                fragColor += shiftColor * attenuation;
+                totalcontrib += attenuation;
+            }
+        }
+        fragColor /= totalcontrib;
+    }
+    else {
+        float totalcontrib = 0.0;
+
+        for (int i = 0; i < int(outerKernelRad)*2+1; i++) {
+            for (int j = 0; j < int(outerKernelRad)*2+1; j++) {
+                float attenuation = outerBlurKernel[i] * 
+                                    outerBlurKernel[j];
+                
+                vec2 shiftCoords = textureCoords;
+                shiftCoords.x += (float(i) - outerKernelRad) / windowSize.x;
+                shiftCoords.y += (float(j) - outerKernelRad) / windowSize.y;
+                shiftCoords = clamp(shiftCoords, vec2(0.0), vec2(1.0));
+
+                vec4 shiftColor = texture2D( textureMap,  shiftCoords );
+
+                fragColor += shiftColor * attenuation;
+                totalcontrib += attenuation;
+            }
+        }
+        fragColor = fragColor / totalcontrib;
+    }
+    gl_FragColor = fragColor;
 }
 ` );
 

@@ -56,8 +56,8 @@ var MVPmat = function ( dispParams ) {
 	// A function to compute a model matrix based on the current state
 	//
 	// NOTE
-	// Please modify this function in a way where halfIpdShift = 0 works for non-
-	// stereo rendering.
+	// Please modify this function in a way where halfIpdShift = 0
+    // works for non-stereo rendering.
 	//
 	// INPUT
 	// state: state of StateController
@@ -68,9 +68,13 @@ var MVPmat = function ( dispParams ) {
 
 		/* TODO (2.4.1) View Matrix Computation - Update this function! */
 
-		var viewerPosition = state.viewerPosition;
+		var eyeShift = new THREE.Vector3(-halfIpdShift, 0, 0);
+        var viewerPosition = new THREE.Vector3();
+        viewerPosition.addVectors(state.viewerPosition, eyeShift);
 
-		var viewerTarget = state.viewerTarget;
+        var eyeShift = new THREE.Vector3(-halfIpdShift, 0, 0);
+        var viewerTarget = new THREE.Vector3();
+        viewerTarget.addVectors(state.viewerTarget, eyeShift);
 
 		var viewerUp = new THREE.Vector3( 0, 1, 0 );
 
@@ -148,30 +152,29 @@ var MVPmat = function ( dispParams ) {
 
 
 			/* TODO (2.4.2) Projection Matrix Computation */
-
-			// Compute projection matrix
-			var right =
-				( dispParams.canvasWidth * dispParams.pixelPitch / 2 )
+            var top = ( dispParams.canvasHeight * dispParams.pixelPitch / 2 )
 					* ( state.clipNear / dispParams.distanceScreenViewer );
-
-			var left = - right;
-
-			var top =
-				( dispParams.canvasHeight * dispParams.pixelPitch / 2 )
-					* ( state.clipNear / dispParams.distanceScreenViewer );
-
 			var bottom = - top;
 
+            canvasPhysWidth = dispParams.canvasWidth * dispParams.pixelPitch;
+            
+			// Compute projection matrix
+			var leftEye_l = -state.clipNear * (canvasPhysWidth - dispParams.ipd) / (2.0 * dispParams.distanceScreenViewer);
+            var leftEye_r = state.clipNear * (canvasPhysWidth + dispParams.ipd) / (2.0 * dispParams.distanceScreenViewer);
+
+			var rightEye_l = -state.clipNear * (canvasPhysWidth + dispParams.ipd) / (2.0 * dispParams.distanceScreenViewer);
+            var rightEye_r = state.clipNear * (canvasPhysWidth - dispParams.ipd) / (2.0 * dispParams.distanceScreenViewer);
+
 			this.anaglyphProjectionMat.L = computePerspectiveTransform(
-				left, right, top, bottom, state.clipNear, state.clipFar );
+				leftEye_l, leftEye_r, top, bottom, 
+                state.clipNear, state.clipFar );
 
 			this.anaglyphProjectionMat.R = computePerspectiveTransform(
-				left, right, top, bottom, state.clipNear, state.clipFar );
-
+				rightEye_l, rightEye_r, top, bottom, 
+                state.clipNear, state.clipFar );
 		}
 
 	}
-
 
 
 	/* Expose as public functions */

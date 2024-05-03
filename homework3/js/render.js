@@ -129,7 +129,7 @@ const ANAGLYPH_MODE = 3;
 // Select which mode for rendering
 // This is controlled by clicks on the button or the keyboard
 // See utils.js
-var renderingMode = STANDARD_MODE;
+var renderingMode = STANDARD_MODE;  // changed for ease of testing
 
 
 // Start rendering!
