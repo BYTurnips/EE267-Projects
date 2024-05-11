@@ -68,7 +68,7 @@ const int ACC    = 4;
 const int QC     = 5;
 
 //chose which values you want to stream
-int streamMode = INFO;
+int streamMode = THREED;
 
 //variables to measure read frequency
 int nReads = 0;
@@ -132,7 +132,6 @@ void loop() {
       //measure imu bias
       Serial.printf("Measuring bias\n");
       tracker.measureImuBiasVariance();
-
     }
   }
 

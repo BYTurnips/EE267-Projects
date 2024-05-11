@@ -44,10 +44,14 @@ public:
 
   }
 
-  /* function to construct a quaternion from angle-axis representation. angle is given in degrees. */
+  /* function to construct a quaternion from angle-axis representation. 
+  angle is given in degrees. */
   Quaternion& setFromAngleAxis(double angle, double vx, double vy, double vz) {
 
-    //this->q[0] = ...
+    this->q[0] = cos((angle / 2) * (M_PI / 180));
+    this->q[1] = vx * sin((angle / 2) * (M_PI / 180));
+    this->q[2] = vy * sin((angle / 2) * (M_PI / 180));
+    this->q[3] = vz * sin((angle / 2) * (M_PI / 180));
 
     return *this;
 
@@ -56,22 +60,30 @@ public:
   /* function to compute the length of a quaternion */
   double length() {
 
-    return 0.0;
+    return pow(pow(this->q[0], 2) + pow(this->q[1], 2) + 
+                pow(this->q[2], 2) + pow(this->q[3], 2), 0.5);
 
   }
 
   /* function to normalize a quaternion */
   Quaternion& normalize() {
-
-    //this->q[0] = ...
+    double l = length();
+    this->q[0] = this->q[0] / l;
+    this->q[1] = this->q[1] / l;
+    this->q[2] = this->q[2] / l;
+    this->q[3] = this->q[3] / l;
 
     return *this;
   }
 
   /* function to invert a quaternion */
   Quaternion& inverse() {
+    double l2 = pow(length(), 2);
 
-    //this->q[0] = ...
+    this->q[0] = this->q[0] / l2;
+    this->q[1] = -this->q[1] / l2;
+    this->q[2] = -this->q[2] / l2;
+    this->q[3] = -this->q[3] / l2;
 
     return *this;
   }
@@ -81,17 +93,17 @@ public:
 
     Quaternion q;
 
-    //q.q[0] = ...
-
+    q.q[0] = a.q[0] * b.q[0] - a.q[1] * b.q[1] - a.q[2] * b.q[2] - a.q[3] * b.q[3];
+    q.q[1] = a.q[0] * b.q[1] + a.q[1] * b.q[0] + a.q[2] * b.q[3] - a.q[3] * b.q[2];
+    q.q[2] = a.q[0] * b.q[2] - a.q[1] * b.q[3] + a.q[2] * b.q[0] + a.q[3] * b.q[1];
+    q.q[3] = a.q[0] * b.q[3] + a.q[1] * b.q[2] - a.q[2] * b.q[1] + a.q[3] * b.q[0];
 
     return q;
   }
 
   /* function to rotate a quaternion by r * q * r^{-1} */
   Quaternion rotate(Quaternion r) {
-
-    return Quaternion();
-
+    return multiply(multiply(r, *this), r.clone().inverse());
   }
 
 

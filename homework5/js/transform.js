@@ -69,7 +69,7 @@ var MVPmat = function ( dispParams ) {
 	function computeViewTransformFromQuatertion( state, halfIpdShift ) {
 
 		// TODO (2.5.i)
-		// Modify this function to use the orietation from the IMU.
+		// Modify this function to use the orientation from the IMU.
 		// You can access the quaternion by state.imuQuaternion
 
 		var viewerPosition = state.viewerPosition;
@@ -83,10 +83,23 @@ var MVPmat = function ( dispParams ) {
 		var ipdTranslateMat =
 			new THREE.Matrix4().makeTranslation( halfIpdShift, 0, 0 );
 
+        
+        var rotateIMU = new THREE.Quaternion()
+        rotateIMU.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+        
+        var hmdQuaternion = new THREE.Quaternion()
+                            .copy(state.imuQuaternion)
+                            .multiply(rotateIMU)
+                            .premultiply(rotateIMU.invert())
+                            .invert();
+        var imuRotateMat = new THREE.Matrix4()
+            .makeRotationFromQuaternion(hmdQuaternion)
+
 		var viewMat = new THREE.Matrix4()
 			.premultiply( translationMat )
-			.premultiply( ipdTranslateMat );
-
+			.premultiply( ipdTranslateMat )
+            .premultiply( imuRotateMat )
+            
 		return viewMat;
 
 	}
@@ -116,9 +129,31 @@ var MVPmat = function ( dispParams ) {
 		var ipdTranslateMat =
 			new THREE.Matrix4().makeTranslation( halfIpdShift, 0, 0 );
 
+        var rotateIMU = new THREE.Quaternion()
+            rotateIMU.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+        var hmdQuaternion = new THREE.Quaternion()
+            .copy(state.imuQuaternion)
+            .multiply(rotateIMU)
+            .premultiply(rotateIMU.invert())
+            .invert();
+        var imuRotateMat = new THREE.Matrix4()
+            .makeRotationFromQuaternion(hmdQuaternion)
+        
+        var headNeckTranslateMat = new THREE.Matrix4()
+            .makeTranslation(0, dispParams.neckLength, dispParams.headLength)
+        
+        var headNeckInvTranslateMat = new THREE.Matrix4()
+            .makeTranslation(0, -dispParams.neckLength, -dispParams.headLength)
+        
+        var compositeIMUMat = new THREE.Matrix4()
+                                .copy(imuRotateMat)
+                                .multiply(headNeckTranslateMat)
+                                .premultiply(headNeckInvTranslateMat)
+        
 		var viewMat = new THREE.Matrix4()
 			.premultiply( translationMat )
-			.premultiply( ipdTranslateMat );
+			.premultiply( ipdTranslateMat )
+            .premultiply( compositeIMUMat )
 
 		return viewMat;
 
