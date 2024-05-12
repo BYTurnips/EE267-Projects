@@ -81,8 +81,17 @@ int PoseTracker::updatePose() {
   //
   // return 0 if errors occur, return 1 if successful
 
+  convertTicksTo2DPositions(clockTicks, position2D);
+  
+  double A[8][8];
+  formA(position2D, positionRef, A);
+  
+  double h[8];
+  if (!solveForH(A, position2D, h)) return 0;
 
-
+  double rot[3][3];
+  double trans[3];
+  getRtFromH(h, rot, trans);
 
 
   return 0;
