@@ -51,39 +51,37 @@ export class VirtualScene {
     collectTriangleData(scene) {
         const data = [];
 
-        scene.traverse((object) => {
-            if (object.isMesh) {
-                const geometry = object.geometry;
-                if (geometry instanceof THREE.BufferGeometry) {
-                    const materials = object.material; // Array of materials
-                    const positions = geometry.getAttribute('position');
-                    const indexAttribute = geometry.getIndex();
+        scene.traverse((obj) => {
+            if (obj.isMesh & obj.geometry instanceof THREE.BufferGeometry) {
+                const geometry = obj.geometry;
+                const materials = obj.material; // Array of materials
+                const positions = geometry.getAttribute('position');
+                const indexAttribute = geometry.getIndex();
 
-                    // Iterate through face groups
-                    for (let i = 0; i < geometry.groups.length; i++) {
-                        const group = geometry.groups[i];
-                        const material = Array.isArray(materials) 
-                            ? materials[group.materialIndex] : materials;
-                        const color = material.color;
+                // Iterate through face groups (for box, each contains 2)
+                for (let i = 0; i < geometry.groups.length; i++) {
+                    const group = geometry.groups[i];
+                    const material = Array.isArray(materials)
+                        ? materials[group.materialIndex] : materials;
+                    const color = material.color;
 
-                        // Iterate through each triangle in the group
-                        for (let j = group.start; j < group.start + group.count; j += 3) {
-                            const v1Index = indexAttribute.getX(j);
-                            const v2Index = indexAttribute.getX(j + 1);
-                            const v3Index = indexAttribute.getX(j + 2);
+                    // Iterate through each triangle in the group
+                    for (let j = group.start; j < group.start + group.count; j += 3) {
+                        const v1Index = indexAttribute.getX(j);
+                        const v2Index = indexAttribute.getX(j + 1);
+                        const v3Index = indexAttribute.getX(j + 2);
 
-                            const v1 = new THREE.Vector3().fromBufferAttribute(positions, v1Index);
-                            const v2 = new THREE.Vector3().fromBufferAttribute(positions, v2Index);
-                            const v3 = new THREE.Vector3().fromBufferAttribute(positions, v3Index);
+                        const v1 = new THREE.Vector3().fromBufferAttribute(positions, v1Index);
+                        const v2 = new THREE.Vector3().fromBufferAttribute(positions, v2Index);
+                        const v3 = new THREE.Vector3().fromBufferAttribute(positions, v3Index);
 
-                            // Push vertices
-                            data.push(v1.x, v1.y, v1.z, 1.0);
-                            data.push(v2.x, v2.y, v2.z, 1.0);
-                            data.push(v3.x, v3.y, v3.z, 1.0);
+                        // Push vertices
+                        data.push(v1.x, v1.y, v1.z, 1.0);
+                        data.push(v2.x, v2.y, v2.z, 1.0);
+                        data.push(v3.x, v3.y, v3.z, 1.0);
 
-                            // Push color of triangle
-                            data.push(color.r, color.g, color.b, 1.0); // RGBA
-                        }
+                        // Push color of triangle
+                        data.push(color.r, color.g, color.b, 1.0);
                     }
                 }
             }
@@ -102,7 +100,7 @@ export class VirtualScene {
         data.set(this.triangleData);
 
         const texture = new THREE.DataTexture(
-            data, 16, numTriangles, THREE.RGBAFormat, THREE.FloatType);
+            data, 4, numTriangles, THREE.RGBAFormat, THREE.FloatType);
         texture.needsUpdate = true;
     }
 }
