@@ -181,7 +181,15 @@ var StandardRenderer = function ( webglRenderer, teapots, dispParams ) {
 			shadowSide: THREE.DoubleSide,
 		} );
 
-		var mesh = new THREE.Mesh( teapots[ i ].geometry, material );
+        // material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff })
+
+        var mesh = new THREE.Mesh( new THREE.BoxGeometry(), material );
+        mesh.scale.x = Math.random() * 20 + 20;
+        mesh.scale.y = Math.random() * 20 + 20;
+        mesh.scale.z = Math.random() * 20 + 20;
+
+        var mesh = new THREE.Mesh( teapots[i].geometry, material );
+
 		meshes.push( mesh );
 		scene.add( mesh );
 	}
@@ -312,6 +320,17 @@ var StandardRenderer = function ( webglRenderer, teapots, dispParams ) {
 		webglRenderer.render( scene, camera );
 	}
 
+    function debug() {
+        vtally = 0;
+
+        for (var i = 0; i < scene.children.length; i++) {
+            if (scene.children[i] instanceof THREE.Mesh) {
+                vtally += scene.children[i].geometry.getAttribute('position').count
+            }
+        }
+        console.log(vtally);
+    }
+
 	/* Event listeners */
 
 	// Automatic update of the renderer size when the window is resized.
@@ -341,4 +360,5 @@ var StandardRenderer = function ( webglRenderer, teapots, dispParams ) {
 	this.replaceNumLights = replaceNumLights;
 	this.render = render;
 	this.renderOnTarget = renderOnTarget;
+    this.debug = debug;
 };

@@ -54,13 +54,13 @@ void main() {
 		textureCoordsUndistorted.x > 0.0 &&
 		textureCoordsUndistorted.y < 1.0 &&
 		textureCoordsUndistorted.y > 0.0 ) {
-		gl_FragColor = texture2D( depthMap , textureCoordsUndistorted );
+		gl_FragColor = texture2D( textureMap , textureCoordsUndistorted );
 	} else {
 		gl_FragColor = vec4( 0.0, 0.0, 0.0, 1.0 );
 	}
 
-    float dep_cont = (texture2D( depthMap, textureCoords ).x - 0.9) * 10.;
-    gl_FragColor = vec4(dep_cont, dep_cont, dep_cont, 1.0);
+    // float dep_cont = (texture2D( depthMap, textureCoords ).x - 0.9) * 10.;
+    // gl_FragColor = vec4(dep_cont, dep_cont, dep_cont, 1.0);
 }
 ` );
 

@@ -122,7 +122,7 @@ animate();
 // requestAnimationFrame().
 // https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
 function animate() {
-
+    // standardRenderer.debug()
 	requestAnimationFrame( animate );
 
 	// Start performance monitoring
