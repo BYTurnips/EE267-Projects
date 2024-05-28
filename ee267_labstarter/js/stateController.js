@@ -104,7 +104,7 @@ var StateController = function ( dispParams ) {
 	}
 
 	function onMove( e, x, y ) {
-		var ctrlKey = e.metaKey && e.ctrlKey ; // BRION: Adjusted for simplification
+		var ctrlKey = e.metaKey || e.ctrlKey ; // BRION: Adjusted for simplification
 
 		// Check the mouse is clicked. If not, do nothing.
 		if ( !clickHold ) return;

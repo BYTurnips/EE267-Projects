@@ -184,11 +184,11 @@ var StandardRenderer = function ( webglRenderer, teapots, dispParams ) {
         // material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff })
 
         var mesh = new THREE.Mesh( new THREE.BoxGeometry(), material );
-        mesh.scale.x = Math.random() * 20 + 20;
-        mesh.scale.y = Math.random() * 20 + 20;
-        mesh.scale.z = Math.random() * 20 + 20;
+        mesh.scale.x = 150;
+        mesh.scale.y = 150;
+        mesh.scale.z = 150;
 
-        var mesh = new THREE.Mesh( teapots[i].geometry, material );
+        var mesh = new THREE.Mesh( new THREE.TeapotGeometry( 150, 3, true, true, true, false, true ), material );
 
 		meshes.push( mesh );
 		scene.add( mesh );
