@@ -37,7 +37,7 @@ export function vShaderRaycast() {
         vec3 upUnnormlized = cameraUp * quadHeight;
         vec3 lookUnnormalized = cameraLook * quadDepth;
 
-        vec3 focusVector = lookUnnormalized + (v - 0.5) * rightUnnormalized + (u - 0.5) * upUnnormalized;
+        vec3 focusVector = lookUnnormalized + (uv[1] - 0.5) * rightUnnormalized + (uv[0] - 0.5) * upUnnormalized;
         
         return normalize(focusVector);
     }
