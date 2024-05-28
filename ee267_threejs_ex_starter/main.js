@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
 
-import { VirtualScene } from './scene.js'
+import { VirtualWorld } from './scene.js'
 import { vShaderRaycast } from './raycast_vshader.js';
 import { fShaderRaycast } from './raycast_fshader.js';
 
@@ -23,8 +23,7 @@ const ipd = 64
 let stats;
 
 // Virtual scene variables
-let virtualScene;
-let virtualCamera;
+let virtualWorld;
 let theta = 0;      // Current angle of virtualCamera on orbit
 const rad = 5;      // Radius of orbit of virtualCamera
 
@@ -50,9 +49,7 @@ function init() {
     document.body.appendChild(stats.dom);
 
     // Initial Virtual Scene
-    virtualScene = new VirtualScene(100);
-    virtualCamera = new THREE.PerspectiveCamera(
-        70, window.innerWidth / window.innerHeight, 0.1, 1000);
+    virtualWorld = new VirtualWorld();
 
     // Create Real Scene
     realSceneL = new THREE.Scene();
@@ -76,7 +73,7 @@ function init() {
             quadDepth: { value: virtualD },
             quadHeight: { value: virtualH },
             quadWidth: { value: virtualW },
-            sceneVertices: { value: virtualScene.triangleDataTexture }
+            sceneVertices: { value: virtualWorld.triangleDataTexture }
         },
         vertexShader: vShaderRaycast(),
         fragmentShader: fShaderRaycast(),
@@ -104,13 +101,13 @@ function init() {
 
 function updateQuadUniforms() {
     const cameraLook = new THREE.Vector3(); 
-    virtualCamera.getWorldDirection(cameraLook);
-    const cameraUp = virtualCamera.up.clone();
+    virtualWorld.camera.getWorldDirection(cameraLook);
+    const cameraUp = virtualWorld.camera.up.clone();
     const cameraRight = new THREE.Vector3().crossVectors(cameraLook, cameraUp);
-    
-    const cameraPosL = virtualCamera.position.clone();
+
+    const cameraPosL = virtualWorld.camera.position.clone();
     cameraPosL.sub(cameraRight.clone().multiplyScalar(ipd / 2))
-    const cameraPosR = virtualCamera.position.clone();
+    const cameraPosR = virtualWorld.camera.position.clone();
     cameraPosR.add(cameraRight.clone().multiplyScalar(ipd / 2))
     
     fullQuadL.material.uniforms.cameraPos.value = cameraPosL;
@@ -120,6 +117,10 @@ function updateQuadUniforms() {
     fullQuadR.material.uniforms.cameraPos.value = cameraPosR;
     fullQuadR.material.uniforms.cameraLook.value = cameraLook;
     fullQuadR.material.uniforms.cameraUp.value = cameraUp;
+
+    fullQuadL.material.uniforms.time.value += 0.002
+    if (fullQuadL.material.uniforms.time.value >= 1)
+        fullQuadL.material.uniforms.time.value = 0
 }
 
 function onWindowResize() {
@@ -134,30 +135,32 @@ function animate() {
     requestAnimationFrame(animate);
     stats.update();
 
-    /***************** Virtual Scene Transformations **************/
-    theta += 0.1;
-    virtualCamera.position.x = rad * Math.sin(THREE.MathUtils.degToRad(theta));
-    virtualCamera.position.y = rad * Math.sin(THREE.MathUtils.degToRad(theta));
-    virtualCamera.position.z = rad * Math.cos(THREE.MathUtils.degToRad(theta));
-    virtualCamera.lookAt(virtualScene.scene.position);
-
+    /******** Virtual Scene Transformations ********/
+    // virtualWorld.orbitCamera();
     updateQuadUniforms();
 
-    // renderer.render(virtualScene.scene, virtualCamera)
+    /**************** Scene Render ****************/
+    render('virtual')
+}
 
-    /**************** Real Scene Stereo Render ****************/
-    renderer.setScissorTest(true);
+function render(scenetype) {
+    if (scenetype == 'real') {
+        renderer.setScissorTest(true);
 
-    const stereoW = window.innerWidth / 2
-    const stereoH = window.innerHeight
-
-    renderer.setViewport(0, 0, stereoW, stereoH);
-    renderer.setScissor(0, 0, stereoW, stereoH);
-    renderer.render(realSceneL, realCameraL);
-
-    renderer.setViewport(stereoW, 0, stereoW, stereoH);
-    renderer.setScissor(stereoW, 0, stereoW, stereoH);
-    renderer.render(realSceneR, realCameraR);
-
-    renderer.setScissorTest(false);
+        const stereoW = window.innerWidth / 2
+        const stereoH = window.innerHeight
+    
+        renderer.setViewport(0, 0, stereoW, stereoH);
+        renderer.setScissor(0, 0, stereoW, stereoH);
+        renderer.render(realSceneL, realCameraL);
+    
+        renderer.setViewport(stereoW, 0, stereoW, stereoH);
+        renderer.setScissor(stereoW, 0, stereoW, stereoH);
+        renderer.render(realSceneR, realCameraR);
+    
+        renderer.setScissorTest(false);
+    }
+    else if (scenetype == 'virtual') {
+        renderer.render(virtualWorld.scene, virtualWorld.camera)
+    }
 }
