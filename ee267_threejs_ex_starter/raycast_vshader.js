@@ -14,6 +14,7 @@ export function vShaderRaycast() {
 
     // Uniforms determine camera DoF
     uniform vec3 cameraPosition;        // Camera Position
+    uniform float quadDepth;            // Virtual Depth of Quad
     uniform vec3 cameraLook;            // Camera Looking Vector
     uniform vec3 cameraUp;              // Camera Up Vector
 

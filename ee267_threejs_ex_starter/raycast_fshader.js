@@ -9,6 +9,8 @@ export function fShaderRaycast() {
     varying vec3 focusVector;
     // Virtual scene vertices for ray cast collision detection
     uniform sampler2D sceneVertices;
+    // Camera position in world space
+    uniform vec3 cameraPosition;
 
     void main() {
         vec3 colorsc = testcolor * textureCoords.x;
