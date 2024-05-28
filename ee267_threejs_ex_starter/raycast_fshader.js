@@ -14,9 +14,8 @@ export function fShaderRaycast() {
     uniform vec3 cameraPos;
 
     // flow from point p along line with zero curvature in the direction of v for time deltaT
-    vec3 expMap[2](vec3 p, vec3 v, float deltaT) {
-        vec3 res[2] = {p + v * deltaT, v};
-        return p + v * deltaT;
+    vec3[2] expMap(vec3 p, vec3 v, float deltaT) {
+        return vec3[2](p + v * deltaT, v);
     }
 
     float hitTriangle(vec3 vertices[3], vec3 p, vec3 dir, float eps) {
@@ -44,56 +43,45 @@ export function fShaderRaycast() {
         if (dist > eps) {
             return dist;
         }
-        return false;
+        return -1.;
     }
 
     // find closest front collision with a triangular mesh and get color
 
-    vec3 colOnHit(vec3 p, vec3 dir, float maxDist, float eps) {
+    vec4 colOnHit(vec3 p, vec3 dir, float maxDist, float eps) {
         float distMin = -1.;
         vec3 e1;
         vec3 e2;
-        int n = textureSize(sceneVertices).y; // num triangles
+        int n = textureSize(sceneVertices, 0).y; // num triangles
+        int best_i = 0;
         for (int i = 0; i < n; i++) {
-            vec3 v1 = {
-                texture2D(sceneVertices, vec2(0, i)),
-                texture2D(sceneVertices, vec2(1, i)),
-                texture2D(sceneVertoces, vec2(2, i))
-            };
-            vec3 v2 = {
-                texture2D(sceneVertices, vec2(3, i)),
-                texture2D(sceneVertices, vec2(4, i)),
-                texture2D(sceneVertoces, vec2(5, i))
-            };
-            vec3 v3 = {
-                texture2D(sceneVertices, vec2(6, i)),
-                texture2D(sceneVertices, vec2(7, i)),
-                texture2D(sceneVertoces, vec2(8, i))
-            };
-            vec3 vertices[3] = {vec1, vec2, vec3};
+            vec3 v1 = texture2D(sceneVertices, vec2(0, i)).xyz;
+            vec3 v2 = texture2D(sceneVertices, vec2(1, i)).xyz;
+            vec3 v3 = texture2D(sceneVertices, vec2(2, i)).xyz;
+            vec3 vertices[3] = vec3[3](v1, v2, v3);
 
-            float curDist = hitTriangle(vertices, origin, dir, eps);
+            float curDist = hitTriangle(vertices, p, dir, eps);
             if (distMin < 0.0 || curDist < distMin) {
                 if (curDist > 0.0 && curDist < maxDist ) {
                     distMin = curDist;
                     e1 = vertices[1] - vertices[0];
-                    e2 = vertices[2] - vertices[0]
+                    e2 = vertices[2] - vertices[0];
+                    best_i = i;
                 }
 
             }
         }
-    if (distMin > 0. && distMin < maxDist) {
-        vec3 color = texture2D(sceneColors, vec2(i, 0));;
-        return color;
-    }
-    return vec3(0, 0, 0);
+        if (distMin > 0. && distMin < maxDist) {
+            vec4 color = texture2D(sceneVertices, vec2(3, best_i));
+            return color;
+        }
+        return vec4(0., 0., 0., 0.);
     }
 
     void main() {
-        gl_FragColo = vec4(0., 0., 0., 0.);
         float t = 0.;
-        vec3 color = {0., 0., 0.};
-        float deltaT = 0.1
+        vec4 color = vec4(0., 0., 0., 0.);
+        float deltaT = 0.1;
         float eps = 0.0000001;
         while ( t <= 5.) {
             // Runge-Kutta method
@@ -108,11 +96,12 @@ export function fShaderRaycast() {
                 curP = newPV[0];
                 curV = newPV[1];
             } 
-            vec3 color = colOnHit(curP, curV, deltaT, eps);
-            if (!equal(color, vec3(0., 0., 0.))) {
-                gl_FragColor = vec4(color, 1.);
+            vec4 color = colOnHit(curP, curV, deltaT, eps);
+            if (color != vec4(0., 0., 0., 0.)) {
                 break;
             }
+
+            gl_FragColor = color;
 
         }
         
