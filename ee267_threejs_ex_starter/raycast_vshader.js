@@ -27,11 +27,19 @@ export function vShaderRaycast() {
      */
     varying vec3 focusVector;
     
-    void calculateFocus() {
+    vec3 calculateFocus() {
         // Probably will use uv, cameraPosition, cameraLook, cameraUp
         // Keep in mind it's stereo view, so uv maps to half the viewport
 
         // hi pino
+        vec3 right = cross(cameraLook, cameraUp);
+        vec3 rightUnnormalized = quadWidth * right;
+        vec3 upUnnormlized = cameraUp * quadHeight;
+        vec3 lookUnnormalized = cameraLook * quadDepth;
+
+        vec3 focusVector = lookUnnormalized + (v - 0.5) * rightUnnormalized + (u - 0.5) * upUnnormalized;
+        
+        return normalize(focusVector);
     }
 
     void main() {
