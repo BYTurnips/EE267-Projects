@@ -9,6 +9,16 @@ import { VirtualScene } from './scene.js'
 import { vShaderRaycast } from './raycast_vshader.js';
 import { fShaderRaycast } from './raycast_fshader.js';
 
+
+// Display Parameters (and based on lecture)
+const virtualD = Math.abs(1. / (1. / 40. - 1 / 18.))
+const mag = 40. / (40. - 18.) 
+const virtualH = 74.5 * mag
+// Divided by 2 because we only get half the viewport
+const virtualW = 132.5 * mag / 2
+const ipd = 64
+
+
 // Three.js stats object
 let stats;
 
@@ -56,23 +66,24 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    matQuadL = new THREE.ShaderMaterial({
+    const matQuad = new THREE.ShaderMaterial({
         uniforms: {
-            time: 0,
+            time: { value: 1 },
             testcolor: { value: new THREE.Color(0xff0000) },
+            cameraPos: { value: new THREE.Vector3() },
+            cameraLook: { value: new THREE.Vector3() },
+            cameraUp: { value: new THREE.Vector3() },
+            quadDepth: { value: virtualD },
+            quadHeight: { value: virtualH },
+            quadWidth: { value: virtualW },
+            sceneVertices: { value: virtualScene.triangleDataTexture }
         },
         vertexShader: vShaderRaycast(),
         fragmentShader: fShaderRaycast(),
     });
 
-    matQuadR = new THREE.ShaderMaterial({
-        uniforms: {
-            time: 0,
-            testcolor: { value: new THREE.Color(0x0000ff) },
-        },
-        vertexShader: vShaderRaycast(),
-        fragmentShader: fShaderRaycast(),
-    });
+    matQuadL = matQuad.clone();
+    matQuadR = matQuad.clone();
 
     fullQuadL = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), matQuadL);
     fullQuadR = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), matQuadR);
@@ -92,14 +103,23 @@ function init() {
 }
 
 function updateQuadUniforms() {
-    matQuadR = new THREE.ShaderMaterial({
-        uniforms: {
-            time: 0,
-            testcolor: { value: new THREE.Color(0x0000ff) },
-        },
-        vertexShader: vShaderRaycast(),
-        fragmentShader: fShaderRaycast(),
-    });
+    const cameraLook = new THREE.Vector3(); 
+    virtualCamera.getWorldDirection(cameraLook);
+    const cameraUp = virtualCamera.up.clone();
+    const cameraRight = new THREE.Vector3().crossVectors(cameraLook, cameraUp);
+    
+    const cameraPosL = virtualCamera.position.clone();
+    cameraPosL.sub(cameraRight.clone().multiplyScalar(ipd / 2))
+    const cameraPosR = virtualCamera.position.clone();
+    cameraPosR.add(cameraRight.clone().multiplyScalar(ipd / 2))
+    
+    fullQuadL.material.uniforms.cameraPos.value = cameraPosL;
+    fullQuadL.material.uniforms.cameraLook.value = cameraLook;
+    fullQuadL.material.uniforms.cameraUp.value = cameraUp;
+
+    fullQuadR.material.uniforms.cameraPos.value = cameraPosR;
+    fullQuadR.material.uniforms.cameraLook.value = cameraLook;
+    fullQuadR.material.uniforms.cameraUp.value = cameraUp;
 }
 
 function onWindowResize() {
@@ -121,21 +141,23 @@ function animate() {
     virtualCamera.position.z = rad * Math.cos(THREE.MathUtils.degToRad(theta));
     virtualCamera.lookAt(virtualScene.scene.position);
 
+    updateQuadUniforms();
+
+    // renderer.render(virtualScene.scene, virtualCamera)
+
     /**************** Real Scene Stereo Render ****************/
-    // renderer.setScissorTest(true);
+    renderer.setScissorTest(true);
 
-    // const stereoW = window.innerWidth / 2
-    // const stereoH = window.innerHeight
+    const stereoW = window.innerWidth / 2
+    const stereoH = window.innerHeight
 
-    // renderer.setViewport(0, 0, stereoW, stereoH);
-    // renderer.setScissor(0, 0, stereoW, stereoH);
-    // renderer.render(realSceneL, realCameraL);
+    renderer.setViewport(0, 0, stereoW, stereoH);
+    renderer.setScissor(0, 0, stereoW, stereoH);
+    renderer.render(realSceneL, realCameraL);
 
-    // renderer.setViewport(stereoW, 0, stereoW, stereoH);
-    // renderer.setScissor(stereoW, 0, stereoW, stereoH);
-    // renderer.render(realSceneR, realCameraR);
+    renderer.setViewport(stereoW, 0, stereoW, stereoH);
+    renderer.setScissor(stereoW, 0, stereoW, stereoH);
+    renderer.render(realSceneR, realCameraR);
 
-    // renderer.setScissorTest(false);
-
-    renderer.render(virtualScene.scene, virtualCamera)
+    renderer.setScissorTest(false);
 }

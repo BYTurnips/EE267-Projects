@@ -1,15 +1,9 @@
 /*
- *  Generates the virtual scene and camera features.
- *  Contains both constants (meshes) and changing values (camera angle)
- *  Is designed to export two materials for shading Left and Right
- *  Fullscreen Quads for stereo raycasting.
+ *  Generates the virtual scene features.
  */
 import * as THREE from 'three';
 
 export class VirtualScene {
-    // Interpupillary distance for stereo rendering
-    ipd = 64
-
     // Scene variable
     scene = null;
 
@@ -55,40 +49,60 @@ export class VirtualScene {
     }
 
     collectTriangleData(scene) {
-        const vertices = [];
+        const data = [];
 
         scene.traverse((object) => {
             if (object.isMesh) {
                 const geometry = object.geometry;
-                const positions = geometry.getAttribute('position');
+                if (geometry instanceof THREE.BufferGeometry) {
+                    const materials = object.material; // Array of materials
+                    const positions = geometry.getAttribute('position');
+                    const indexAttribute = geometry.getIndex();
 
-                for (let i = 0; i < positions.count; i += 3) {
-                    const v1 = new THREE.Vector3().fromBufferAttribute(positions, i);
-                    const v2 = new THREE.Vector3().fromBufferAttribute(positions, i + 1);
-                    const v3 = new THREE.Vector3().fromBufferAttribute(positions, i + 2);
+                    // Iterate through face groups
+                    for (let i = 0; i < geometry.groups.length; i++) {
+                        const group = geometry.groups[i];
+                        const material = Array.isArray(materials) 
+                            ? materials[group.materialIndex] : materials;
+                        const color = material.color;
 
-                    vertices.push(v1.x, v1.y, v1.z);
-                    vertices.push(v2.x, v2.y, v2.z);
-                    vertices.push(v3.x, v3.y, v3.z);
+                        // Iterate through each triangle in the group
+                        for (let j = group.start; j < group.start + group.count; j += 3) {
+                            const v1Index = indexAttribute.getX(j);
+                            const v2Index = indexAttribute.getX(j + 1);
+                            const v3Index = indexAttribute.getX(j + 2);
+
+                            const v1 = new THREE.Vector3().fromBufferAttribute(positions, v1Index);
+                            const v2 = new THREE.Vector3().fromBufferAttribute(positions, v2Index);
+                            const v3 = new THREE.Vector3().fromBufferAttribute(positions, v3Index);
+
+                            // Push vertices
+                            data.push(v1.x, v1.y, v1.z, 1.0);
+                            data.push(v2.x, v2.y, v2.z, 1.0);
+                            data.push(v3.x, v3.y, v3.z, 1.0);
+
+                            // Push color of triangle
+                            data.push(color.r, color.g, color.b, 1.0); // RGBA
+                        }
+                    }
                 }
             }
         });
-
-        return vertices;
+        return data;
     }
 
     updateSceneBuffer() {
         this.triangleData = this.collectTriangleData(this.scene)
 
-        // 9 coordinates per triangle
-        const numTriangles = this.triangleData.length / 9;
+        // 4 * 4 coordinates per triangle
+        const numTriangles = this.triangleData.length / 16;
 
-        // RGB format
+        // RGBA format
         const data = new Float32Array(this.triangleData.length);
         data.set(this.triangleData);
-    
+
         const texture = new THREE.DataTexture(
-            data, 9, numTriangles, THREE.RGBFormat, THREE.FloatType);
+            data, 16, numTriangles, THREE.RGBAFormat, THREE.FloatType);
         texture.needsUpdate = true;
     }
 }

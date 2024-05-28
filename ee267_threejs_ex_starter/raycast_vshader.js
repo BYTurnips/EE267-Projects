@@ -13,7 +13,7 @@ export function vShaderRaycast() {
     // attribute vec2 uv;
 
     // Uniforms determine camera DoF
-    uniform vec3 cameraPosition;        // Camera Position
+    uniform vec3 cameraPos;        // Camera Position
     uniform vec3 cameraLook;            // Camera Looking Vector
     uniform vec3 cameraUp;              // Camera Up Vector
 
@@ -27,11 +27,12 @@ export function vShaderRaycast() {
      */
     varying vec3 focusVector;
     
-    void calculateFocus() {
+    vec3 calculateFocus() {
         // Probably will use uv, cameraPosition, cameraLook, cameraUp
         // Keep in mind it's stereo view, so uv maps to half the viewport
 
         // hi pino
+        return vec3(0.0, 0.0, 0.0);
     }
 
     void main() {
