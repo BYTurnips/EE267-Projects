@@ -36,8 +36,22 @@ export function fShaderRaycast() {
     /****** Raycast transformation functions ******/
     
     // Straight line rays
-    vec3[2] expMap(vec3 p, vec3 v, float deltaT) {
+    vec3[2] expMap(vec3 p, vec3 v, float deltaT, float R) {
         return vec3[2](p + v * deltaT, v);
+    }
+
+    // flow along zero curvature curves of S^1 x RR (cylinder)
+    vec3[2] expMapCircle(vec3 p, vec3 v, float deltaT, float R) {
+        vec2 r = normalize(vec2(-v.y, v.x)) * R;
+
+        vec2 new_pxy = normalize(r + R * tan(deltaT / r) * v) * R;
+        vec3 new_pxyz = vec3(new_pxy.x, new_pxy.y, p.z + v.z * deltaT);
+
+        vec2 new_vxy = normalize(vec2(-new_pxy.y, new_pxy.x)) * length(v.xy);
+        vec3 new_vxyz = vec3(new_vxy.x, new_vxy.y, v.z);
+
+        return vec3[2](new_pxyz, new_vxyz);
+        
     }
 
     // Light slows down over time
@@ -99,7 +113,7 @@ export function fShaderRaycast() {
         int n = textureSize(sceneVertices, 0).y; // num triangles
         int best_i = -1;
 
-        vec4 temp = texture2D(sceneVertices, vec2(11,11));
+        // vec4 temp = texture2D(sceneVertices, vec2(11,11));
         
         for (int i = 0; i < n; i++) {
             vec3 v1 = texture2D(sceneVertices, vec2(0, i)).xyz;
@@ -112,7 +126,7 @@ export function fShaderRaycast() {
 
             // float curDist = hitTriangle(vertices, p, dir, eps);
             float curDist = hitTriangle(vertices, p, dir, eps);
-            // return vec4(curDist, 0., 0., 1.);
+            // return vec4(curDist, 0., 0., 1.);fgghggv 
             if ((distMin < 0.0) || (curDist < distMin)) {
                 if ((curDist > 0.0 + eps) && (curDist <= maxDist + eps) ) {
                     distMin = curDist;
@@ -136,7 +150,7 @@ export function fShaderRaycast() {
         vec4 color = vec4(0., 0., 0., 1.);
         float deltaT = 1.;
         float eps = 0.0000001;
-        while ( t <= 5.) {
+        while ( t <= 400.) {
             vec3 curP;
             vec3 curV;
             if (t == 0.) {
