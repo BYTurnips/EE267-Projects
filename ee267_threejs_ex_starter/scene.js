@@ -23,14 +23,16 @@ export class VirtualWorld {
     constructor() {
         /******** Build the Scene *******/
         // this.makeRandomBoxScene()
-        this.makeBasicBoxScene(0, 0, -10, 2)
+        this.makeBasicBoxScene(0, 0, -400, 200)
 
         /******** Place the Camera *******/
         this.initCamera(window.innerWidth / window.innerHeight)
-        this.placeCamera(0, 0, 0)
+        this.translateCamera(0, 0, 0)
 
         /******** Update the Scene Buffers *******/
         this.updateSceneData()
+
+        console.log(this.triangleData)
     }
 
     debug() {
@@ -59,11 +61,10 @@ export class VirtualWorld {
         this.camera = new THREE.PerspectiveCamera(70, aspect, 0.1, 1000);
     }
 
-    placeCamera(x, y, z) {
+    translateCamera(x, y, z) {
         this.camera.position.x = x;
         this.camera.position.y = y;
         this.camera.position.z = z;
-        this.camera.lookAt(this.scene.position);
     }
 
     orbitCamera() {

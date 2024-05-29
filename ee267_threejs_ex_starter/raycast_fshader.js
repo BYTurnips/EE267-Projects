@@ -33,12 +33,35 @@ export function fShaderRaycast() {
     vec4 T13iterRayAllTriangles();
 
 
-    /****** Primary raycast functions ******/
+    /****** Raycast transformation functions ******/
     
-    // flow from point p along line with zero curvature
+    // Straight line rays
     vec3[2] expMap(vec3 p, vec3 v, float deltaT) {
         return vec3[2](p + v * deltaT, v);
     }
+
+    // Light slows down over time
+    vec3[2] decayMap(vec3 p, vec3 v, float deltaT) {
+        vec3 newV = v * 0.99;
+        return vec3[2](p + v * deltaT, newV);
+    }
+
+    // Drift rays in XY direction
+    vec3[2] driftMapXY(vec3 p, vec3 v, float deltaT) {
+        vec3 newV = v;
+        newV.x += 0.1;
+        newV.y += 0.1;
+        newV = normalize(newV);
+        return vec3[2](p + v * deltaT, newV);
+    }
+
+    // Constant field setting all line rays to -Z
+    vec3[2] constantNegZMap(vec3 p, vec3 v, float deltaT) {
+        vec3 newV = vec3(0.0, 0.0, 1.0);
+        return vec3[2](p + v * deltaT, newV);
+    }
+
+    /****** Primary raycast functions ******/
 
     float hitTriangle(vec3 vertices[3], vec3 p, vec3 dir, float eps) {
         vec3 e1 = vertices[1] - vertices[0];
@@ -63,9 +86,6 @@ export function fShaderRaycast() {
             }
             float dist = f * dot(e2, q);
             return dist;
-            // if (dist > eps) {
-            //     return dist;
-            // }
         }
         return -1.;
     }
@@ -144,7 +164,7 @@ export function fShaderRaycast() {
     }
 
     void main() {
-        gl_FragColor = nonLinearRayCast();
+        gl_FragColor = T7linearRayCollisionWithFirstTriangle();
     }
 
     /**** Unit test functions ****/
@@ -163,30 +183,62 @@ export function fShaderRaycast() {
         uniform vec3 camearUp;
     */
 
+    vec4 displayError(int code) {
+        if (code == 1) return vec4(1.0, 0.0, 0.0, 1.0);
+        if (code == 2) return vec4(0.0, 1.0, 0.0, 1.0);
+        if (code == 3) return vec4(0.0, 0.0, 1.0, 1.0);
+    }
+
+    vec4 displayScalar(float s) {
+        return vec4(s, s, s, 1.0);
+    }
+    
+    vec4 displayTriple(vec3 v) {
+        return vec4(v.x, v.y, v.z, 1.0);
+    }
+
     vec4 T1testColorTime() {
         vec3 colorsc = testcolor * textureCoords.x * textureCoords.y;
         return vec4(colorsc, time); 
     }
 
     vec4 T2focusVectorNormalized() {
-        float fvlen = length(focusVector);
-        return vec4(fvlen, fvlen, fvlen, time); 
+        vec3 focusVectorN = normalize(focusVector);
+        float fvlen = length(focusVectorN);
+        return displayScalar(fvlen);
     }
 
     vec4 T3angleFromLookAt() {
-        return vec4(0.0, 0.0, 0.0, 1.0);
+        vec3 focusVectorN = normalize(focusVector);
+        float cosA = dot(focusVectorN, cameraLook);
+        return displayScalar(cosA);
     }
 
     vec4 T4angleFromNegativeZ() {
-        return vec4(0.0, 0.0, 0.0, 1.0);
+        vec3 focusVectorN = normalize(focusVector);
+        float cosA = dot(focusVectorN, vec3(0.0, 0.0, -1.0));
+        return displayScalar(cosA);
     }
 
     vec4 T5cameraPosTest() {
-        return vec4(0.0, 0.0, 0.0, 1.0);
+        vec3 color;
+        color.x = cameraPos.x;
+        color.y = cameraPos.y;
+        color.z = cameraPos.z;
+        if (cameraPos.x == -32.0) return displayError(1);
+        if (cameraPos.x == 32.0) return displayError(2);
+        return displayTriple(normalize(color));
     }
 
     vec4 T6linearRayCollisionWithHardcodedTriangle() {
-        return vec4(0.0, 0.0, 0.0, 1.0);
+        vec3 triangle[3];
+        triangle[0] = vec3(1.0, 1.0, -9.0);
+        triangle[1] = vec3(1.0, -2.0, -9.0);
+        triangle[2] = vec3(-2.0, 1.0, -9.0);
+        vec3 singleCamPos = vec3(0.0, 0.0, 0.0);
+        float dist = hitTriangle(triangle, singleCamPos, cameraLook, 0.0000001);
+        if (dist == -1.) return displayError(2);
+        else return displayScalar(dist);
     }
 
     vec4 T7linearRayCollisionWithFirstTriangle() {
@@ -201,12 +253,35 @@ export function fShaderRaycast() {
         return vec4(0.0, 0.0, 0.0, 1.0);
     }
 
+    // Should show a radial gradient that's darker on the edges
     vec4 T10iterRayDistanceMap() {
-        return vec4(0.0, 0.0, 0.0, 1.0);
+        vec3 focusVectorN = normalize(focusVector);
+        
+        float t = 0.;
+        vec3 curP = cameraPos;
+        vec3 curV = focusVectorN;
+        while ( t <= 5.) {
+            vec3 newPV[2] = expMap(curP, curV, 0.1);
+            curP = newPV[0];
+            curV = newPV[1];
+            t += 0.1;
+        }
+        return displayScalar(abs(curP.z) / 5.);
     }
 
     vec4 T11nonLinearIterRayDistanceMap() {
-        return vec4(0.0, 0.0, 0.0, 1.0);
+        vec3 focusVectorN = normalize(focusVector);
+        
+        float t = 0.;
+        vec3 curP = cameraPos;
+        vec3 curV = focusVectorN;
+        while ( t <= 5.) {
+            vec3 newPV[2] = driftMapXY(curP, curV, 0.1);
+            curP = newPV[0];
+            curV = newPV[1];
+            t += 0.1;
+        }
+        return displayScalar(abs(curP.z) / 5.);
     }
 
     vec4 T12iterRayHardcodedTriangle() {
@@ -216,6 +291,5 @@ export function fShaderRaycast() {
     vec4 T13iterRayAllTriangles() {
         return vec4(0.0, 0.0, 0.0, 1.0);
     }
-
     `
 }
