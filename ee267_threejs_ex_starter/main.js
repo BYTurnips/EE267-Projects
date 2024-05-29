@@ -77,7 +77,6 @@ function init() {
 
             maxIterations:  { value: 20. },
             maxRayDistance: { value: 600. },
-            maxSenseDistance:   { value: 30. },
         },
         vertexShader: vShaderRaycast(),
         fragmentShader: fShaderRaycast(),

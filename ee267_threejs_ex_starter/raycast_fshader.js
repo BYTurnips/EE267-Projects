@@ -24,7 +24,6 @@ export function fShaderRaycast() {
     // Performance parameters
     uniform float maxIterations;
     uniform float maxRayDistance;
-    uniform float maxSenseDistance;
 
     /****** Unit test prototypes ******/
     vec4 T1testColorTime();
@@ -49,13 +48,28 @@ export function fShaderRaycast() {
         return vec3[2](p + v * deltaT, v);
     }
 
+    // flow along zero curvature curves of S^1 x RR (cylinder)
+    vec3[2] expMapCircle(vec3 p, vec3 v, float deltaT) {
+        float R = 10000000.;
+        vec2 r = normalize(vec2(-v.y, v.x)) * R;
+
+        vec2 new_r = normalize(r + R * tan(deltaT * length(v.xy) / R) * normalize(v.xy) ) * R;
+        vec2 new_pxy = p.xy - r + new_r;
+        vec3 new_pxyz = vec3(new_pxy, p.z + v.z * deltaT);
+
+        vec2 new_vxy = normalize(vec2(-new_pxy.y, new_pxy.x)) * length(v.xy);
+        vec3 new_vxyz = vec3(new_vxy, v.z);
+
+        return vec3[2](new_pxyz, new_vxyz);
+    }
+
     // Light slows down over time
     vec3[2] decayMap(vec3 p, vec3 v, float deltaT) {
         vec3 newV = v * 0.99;
         return vec3[2](p + v * deltaT, newV);
     }
 
-    // Drift rays in XY direction
+    // Drift rays in world XY direction
     vec3[2] driftMapXY(vec3 p, vec3 v, float deltaT) {
         vec3 newV = v;
         newV.x += 0.1;
@@ -64,7 +78,7 @@ export function fShaderRaycast() {
         return vec3[2](p + v * deltaT, newV);
     }
 
-    // Drift rays in Z direction
+    // Drift rays in world Z direction
     vec3[2] driftMapZ(vec3 p, vec3 v, float deltaT) {
         vec3 newV = v;
         newV.z += 0.1;
@@ -74,18 +88,19 @@ export function fShaderRaycast() {
 
     // Drift rays along look vector
     vec3[2] driftMapLookTowards(vec3 p, vec3 v, float deltaT) {
-        vec3 newV = normalize(v + 0.1 * cameraLook);
+        vec3 newV = normalize(v + 0.003 * deltaT * cameraLook);
         return vec3[2](p + v * deltaT, newV);
     }
 
     // Drift rays away from look vector
     vec3[2] driftMapLookAway(vec3 p, vec3 v, float deltaT) {
-        vec3 newV = normalize(v - 0.1 * cameraLook);
+        vec3 newV = normalize(v - 0.003 * deltaT * cameraLook);
         return vec3[2](p + v * deltaT, newV);
     }
 
+    // Wrapper function for all the ray transform functions;
     vec3[2] rayTransform(vec3 p, vec3 v, float deltaT) {
-        return driftMapLookAway(p, v, deltaT);
+        return expMapCircle(p, v, deltaT);
     }
 
     /****** Primary raycast functions ******/
@@ -149,8 +164,8 @@ export function fShaderRaycast() {
     }
 
     // Find closest front collision with a triangular mesh and get its color
-    vec4 colorOnHit(vec3 point, vec3 dir, float distThreshold) {
-        float minDist = distThreshold;
+    vec4 colorOnHit(vec3 point, vec3 dir) {
+        float minDist = maxRayDistance / maxIterations;
         int best_i = -1;
 
         // For each triangle, update the distance if the ray hits.
@@ -170,7 +185,8 @@ export function fShaderRaycast() {
         }
 
         // If a triangle was hit, closest triangle color is shown
-        if (minDist < distThreshold) return getSceneData(3, best_i);
+        if (minDist < maxRayDistance / maxIterations) 
+            return getSceneData(3, best_i);
 
         // If no triangles were hit, return the background color
         return vec4(sceneBackground, 1.);
@@ -183,13 +199,13 @@ export function fShaderRaycast() {
         vec3 curP = cameraPos;
         vec3 curV = normalize(focusVector);
 
-        float stepsize = maxRayDistance / maxIterations;
         for (float i = 0.; i < maxIterations; i++) {
-            vec3 newPV[2] = rayTransform(curP, curV, stepsize);
+            vec3 newPV[2] = rayTransform(
+                curP, curV, maxRayDistance / maxIterations);
             curP = newPV[0];
             curV = newPV[1];
 
-            color = colorOnHit(curP, curV, maxSenseDistance);
+            color = colorOnHit(curP, curV);
             if (color != vec4(sceneBackground, 1.)) break;
         }
         return color;
@@ -306,7 +322,7 @@ export function fShaderRaycast() {
     // Should render the full scene with colors
     // Verifies colorOnHit
     vec4 T9linearRayPaintingWithAllTriangles() {
-        return colorOnHit(cameraPos, focusVector, 1000.);
+        return colorOnHit(cameraPos, focusVector);
     }
 
     // Should show a radial gradient that's darker on the edges
