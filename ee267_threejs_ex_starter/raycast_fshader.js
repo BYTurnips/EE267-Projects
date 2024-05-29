@@ -50,17 +50,47 @@ export function fShaderRaycast() {
 
     // flow along zero curvature curves of S^1 x RR (cylinder)
     vec3[2] expMapCircle(vec3 p, vec3 v, float deltaT) {
-        float R = 10000000.;
+        float R = 600.;
         vec2 r = normalize(vec2(-v.y, v.x)) * R;
 
         vec2 new_r = normalize(r + R * tan(deltaT * length(v.xy) / R) * normalize(v.xy) ) * R;
-        vec2 new_pxy = p.xy - r + new_r;
-        vec3 new_pxyz = vec3(new_pxy, p.z + v.z * deltaT);
+        // vec2 new_r = normalize(r + v.xy * deltaT) * R;
+        vec2 move = new_r - r;
+        vec2 new_pxy = p.xy + move;
+        vec3 new_pxyz = vec3(new_pxy.x, new_pxy.y, p.z + v.z * deltaT);
 
-        vec2 new_vxy = normalize(vec2(-new_pxy.y, new_pxy.x)) * length(v.xy);
+        vec2 new_vxy = -normalize(vec2(-new_r.y, new_r.x)) * length(v.xy);
         vec3 new_vxyz = vec3(new_vxy, v.z);
 
         return vec3[2](new_pxyz, new_vxyz);
+    }
+
+    vec3[2] expMapPoincareHalf(vec3 p, vec3 v, float deltaT) {
+        vec2 pHyper = p.xy;
+        vec2 vHyper = v.xy;
+        vec2 y = vec2(0, 1);
+        vec2 origin = cameraPos.xy - vec2(50., 50.);
+        vec2 n = vec2(-vHyper.y, vHyper.x);
+
+        vec3 newV;
+        vec3 newP;
+        if (dot(n, y) != 0.) {
+            float lambda = (dot(origin, y) - dot(pHyper, y)) / dot(n, y);
+            vec2 r = -lambda * n;
+            float R = length(r);
+            vec2 newR = normalize(r + R * tan(deltaT * length(vHyper) / R) * normalize(vHyper) ) * R;
+            vec2 newPHyper = pHyper + newR - r;
+            newP = vec3(newPHyper.x, newPHyper.y, p.z + v.z * deltaT);
+
+            vec2 newVHyper = normalize(vec2(newR.y, -newR.x)) * length(vHyper);
+            newV = vec3(newVHyper, v.z);
+        }
+        else {
+            newV = v;
+            newP = vec3(pHyper + vHyper * deltaT, p.z + v.z * deltaT);
+        }
+
+        return vec3[2](newP, newV);
     }
 
     // Light slows down over time
@@ -100,7 +130,7 @@ export function fShaderRaycast() {
 
     // Wrapper function for all the ray transform functions;
     vec3[2] rayTransform(vec3 p, vec3 v, float deltaT) {
-        return expMapCircle(p, v, deltaT);
+        return expMapPoincareHalf(p, v, deltaT);
     }
 
     /****** Primary raycast functions ******/

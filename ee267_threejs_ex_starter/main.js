@@ -76,7 +76,7 @@ function init() {
             sceneBackground: { value: bgcol },
 
             maxIterations:  { value: 20. },
-            maxRayDistance: { value: 600. },
+            maxRayDistance: { value: 1000. },
         },
         vertexShader: vShaderRaycast(),
         fragmentShader: fShaderRaycast(),
