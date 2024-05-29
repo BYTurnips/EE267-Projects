@@ -140,7 +140,7 @@ function animate() {
     updateQuadUniforms();
 
     /**************** Scene Render ****************/
-    render('virtual')
+    render('real')
 }
 
 function render(scenetype) {

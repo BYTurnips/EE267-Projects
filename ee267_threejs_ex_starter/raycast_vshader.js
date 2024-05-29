@@ -48,3 +48,24 @@ export function vShaderRaycast() {
     }
     `
 }
+
+/*
+ * Unit tests in fshader:
+ *  - Animated test shader
+ *  - Check if focusVector is normalized
+ *  - Check if focusVector is within a certain angle of Look Direction
+ *  - Check if focusVector is within a certain angle of the camera in 
+ *      world coordinates (by inspection)
+ *  - Linear ray collision with a hardcoded triangle in space
+ *      - Check for presence with the cameraLook
+ *      - Check for presence with the focusVector
+ *      - Check for distance with the focusVector
+ *  - Linear ray collision with first triangle in mesh 
+ *      (make sure it's facing the camera)
+ *  - Linear ray collision with all triangles in mesh
+ *  - Iterative ray casting produces distance map (should be radial gradient)
+ *  - Iterative non-linear ray casting produces resulting distance map
+ *  - Iterative linear ray casting with a hardcoded triangle in space
+ *  - Iterative linear ray casting with all triangles in mesh
+ *  - Custom ray casting function with all triangles in mesh
+ */

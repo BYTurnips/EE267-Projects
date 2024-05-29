@@ -31,8 +31,6 @@ export class VirtualWorld {
 
         /******** Update the Scene Buffers *******/
         this.updateSceneData()
-
-        console.log(this.triangleDataTexture)
     }
 
     debug() {
