@@ -11,25 +11,21 @@ import { fShaderRaycast } from './raycast_fshader.js';
 
 
 // Display Parameters (and based on lecture)
-const virtualD = Math.abs(1. / (1. / 40. - 1 / 18.))
-const mag = 40. / (40. - 18.) 
+const focalL = 40.
+const eyeRelief = 18.
+const lensScreenD = 39.
+const virtualD = Math.abs(1. / (1. / focalL - 1 / lensScreenD)) + eyeRelief
+const mag = focalL / (focalL - lensScreenD) 
 const virtualH = 74.5 * mag
 // Divided by 2 because we only get half the viewport
 const virtualW = 132.5 * mag / 2
 const ipd = 64
-
 
 // Three.js stats object
 let stats;
 
 // Virtual scene variables
 let virtualWorld;
-let theta = 0;      // Current angle of virtualCamera on orbit
-const rad = 5;      // Radius of orbit of virtualCamera
-
-// let vCamPosition;   // Position of virtual camera
-// let vCamLook;       // Looking direction of virtual camera
-// let vCamUp;         // Up direction of virtual camera
 
 // Static real scene variables (essentially setting up two TVs)
 let renderer;  // Render object
@@ -54,14 +50,15 @@ function init() {
     // Create Real Scene
     realSceneL = new THREE.Scene();
     realSceneR = new THREE.Scene();
-    realCameraL = new THREE.PerspectiveCamera(
-        70, window.innerWidth / window.innerHeight, 0.1, 1000);
-    realCameraR = new THREE.PerspectiveCamera(
-        70, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+    realCameraL = new THREE.OrthographicCamera();
+    realCameraR = new THREE.OrthographicCamera();
 
     renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
+
+    const bgcol = new THREE.Vector3().fromArray(virtualWorld.bgcolor.toArray())
 
     const matQuad = new THREE.ShaderMaterial({
         uniforms: {
@@ -70,10 +67,17 @@ function init() {
             cameraPos: { value: new THREE.Vector3() },
             cameraLook: { value: new THREE.Vector3() },
             cameraUp: { value: new THREE.Vector3() },
+
             quadDepth: { value: virtualD },
             quadHeight: { value: virtualH },
             quadWidth: { value: virtualW },
-            sceneVertices: { value: virtualWorld.triangleDataTexture }
+
+            sceneVertices: { value: virtualWorld.triangleDataTexture },
+            sceneBackground: { value: bgcol },
+
+            maxIterations:  { value: 20. },
+            maxRayDistance: { value: 600. },
+            maxSenseDistance:   { value: 30. },
         },
         vertexShader: vShaderRaycast(),
         fragmentShader: fShaderRaycast(),
@@ -131,12 +135,15 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+setInterval(() => {
+    virtualWorld.orbitCamera();
+}, 10);
+
 function animate() {
     requestAnimationFrame(animate);
     stats.update();
 
     /******** Virtual Scene Transformations ********/
-    // virtualWorld.orbitCamera();
     updateQuadUniforms();
 
     /**************** Scene Render ****************/

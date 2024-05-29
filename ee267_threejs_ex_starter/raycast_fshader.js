@@ -11,11 +11,20 @@ export function fShaderRaycast() {
 
     // Focus vector passed in and interpolated from vertex shader
     varying vec3 focusVector;
-    // Virtual scene vertices for ray cast collision detection
+
+    // Virtual scene parameters
     uniform sampler2D sceneVertices;
+    uniform vec3 sceneBackground;
+
+    // Virtual camera DoF parameters
     uniform vec3 cameraPos;  // Camera position in world space
     uniform vec3 cameraLook; // Camera looking direction
     uniform vec3 camearUp;   // Camera up direction
+
+    // Performance parameters
+    uniform float maxIterations;
+    uniform float maxRayDistance;
+    uniform float maxSenseDistance;
 
     /****** Unit test prototypes ******/
     vec4 T1testColorTime();
@@ -24,9 +33,9 @@ export function fShaderRaycast() {
     vec4 T4angleFromNegativeZ();
     vec4 T5cameraPosTest();
     vec4 T6linearRayCollisionWithHardcodedTriangle();
-    vec4 T7linearRayCollisionWithFirstTriangle();
-    vec4 T8linearRayDistanceWithFirstTriangle();
-    vec4 T9linearRayCollisionWithAllTriangles();
+    vec4 T7linearRayCollisionWithOneTriangle();
+    vec4 T8linearRayCollisionWithAllTriangles();
+    vec4 T9linearRayPaintingWithAllTriangles();
     vec4 T10iterRayDistanceMap();
     vec4 T11nonLinearIterRayDistanceMap();
     vec4 T12iterRayHardcodedTriangle();
@@ -55,26 +64,47 @@ export function fShaderRaycast() {
         return vec3[2](p + v * deltaT, newV);
     }
 
-    // Constant field setting all line rays to -Z
-    vec3[2] constantNegZMap(vec3 p, vec3 v, float deltaT) {
-        vec3 newV = vec3(0.0, 0.0, 1.0);
+    // Drift rays in Z direction
+    vec3[2] driftMapZ(vec3 p, vec3 v, float deltaT) {
+        vec3 newV = v;
+        newV.z += 0.1;
+        newV = normalize(newV);
         return vec3[2](p + v * deltaT, newV);
+    }
+
+    // Drift rays along look vector
+    vec3[2] driftMapLookTowards(vec3 p, vec3 v, float deltaT) {
+        vec3 newV = normalize(v + 0.1 * cameraLook);
+        return vec3[2](p + v * deltaT, newV);
+    }
+
+    // Drift rays away from look vector
+    vec3[2] driftMapLookAway(vec3 p, vec3 v, float deltaT) {
+        vec3 newV = normalize(v - 0.1 * cameraLook);
+        return vec3[2](p + v * deltaT, newV);
+    }
+
+    vec3[2] rayTransform(vec3 p, vec3 v, float deltaT) {
+        return driftMapLookAway(p, v, deltaT);
     }
 
     /****** Primary raycast functions ******/
 
-    float hitTriangle(vec3 vertices[3], vec3 p, vec3 dir, float eps) {
-        vec3 e1 = vertices[1] - vertices[0];
-        vec3 e2 = vertices[2] - vertices[0];
+    // Checks if a (linear) ray hits a triangle, and returns its distance
+    // Faster algorithm found at https://github.com/niklaskorz/linon/tree/main/src
+    // Original algorithm inspired by https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-rendering-a-triangle/ray-triangle-intersection-geometric-solution.html
+    float rayTriIntersect(vec3 trig[3], vec3 point, vec3 dir) {
+        vec3 e1 = trig[1] - trig[0];
+        vec3 e2 = trig[2] - trig[0];
         vec3 h = cross(dir, e2);
         float a = dot(e1, h);
 
-        if (a > - eps && a < eps) {
+        if ( abs(a) < 0.0001 ) {
             return -1.;
         }
         else {
             float f = 1. / a;
-            vec3 s = p - vertices[0];
+            vec3 s = point - trig[0];
             float u = f * dot(s, h);
             if (u < 0. || u > 1.) {
                 return -0.7;
@@ -85,97 +115,91 @@ export function fShaderRaycast() {
                 return -0.3;
             }
             float dist = f * dot(e2, q);
-            if (dist > eps) {
+            if (dist > 0.0001) {
                 return dist;
             }
         }
         return -1.;
+
+        // /****** Get triangles' plane and determine ray intersection ******/
+        // vec3 plane_norm = cross(trig[1] - trig[0], trig[2] - trig[0]);
+        // float normDotRay = dot(plane_norm, dir);
+        // if ( abs(normDotRay) < 0.00001) return -1.;
+        // float plane_offset = -dot(plane_norm, trig[0]);
+        // float ray_dist = -(dot(point, plane_norm) + plane_offset) / normDotRay;
+        // if (ray_dist < 0.) return -1.;
+        // vec3 plane_pt = point + ray_dist * dir;
+    
+        // /***** Given point on plane, perform triangle test *****/
+        // vec3 crossE0P = cross(trig[1] - trig[0], plane_pt - trig[0]);
+        // bool side0 = dot(plane_norm, crossE0P) < 0.;
+        // vec3 crossE1P = cross(trig[2] - trig[1], plane_pt - trig[1]);
+        // bool side1 = dot(plane_norm, crossE1P) < 0.;
+        // vec3 crossE2P = cross(trig[0] - trig[2], plane_pt - trig[2]);
+        // bool side2 = dot(plane_norm, crossE2P) < 0.;
+        // if ((side0 && side1&& side2) || (!side0 && !side1 && !side2))
+        //     return ray_dist;
+        // else return -1.;
     }
 
-    // find closest front collision with a triangular mesh and get color
+    vec4 getSceneData(int columnID, int triangleID) {
+        float tX = float(columnID) / float(textureSize(sceneVertices, 0).x);
+        float tY = float(triangleID) / float(textureSize(sceneVertices, 0).y);
+        return texture2D(sceneVertices, vec2(tX, tY));
+    }
 
-    vec4 colOnHit(vec3 p, vec3 dir, float maxDist, float eps) {
-        float distMin = -1.;
-        int n = textureSize(sceneVertices, 0).y; // num triangles
+    // Find closest front collision with a triangular mesh and get its color
+    vec4 colorOnHit(vec3 point, vec3 dir, float distThreshold) {
+        float minDist = distThreshold;
         int best_i = -1;
 
-        vec4 temp = texture2D(sceneVertices, vec2(11,11));
-        
-        for (int i = 0; i < n; i++) {
-            vec3 v1 = texture2D(sceneVertices, vec2(0, i)).xyz;
-            vec3 v2 = texture2D(sceneVertices, vec2(1, i)).xyz;
-            vec3 v3 = texture2D(sceneVertices, vec2(2, i)).xyz;
-            // vec3 v1 = cameraPos + focusVector + vec3(1., 0., 0.);
-            // vec3 v2 = cameraPos + focusVector + vec3(0., 1., 0.);
-            // vec3 v3 = cameraPos + focusVector + vec3(-1., -1., 0.);
-            vec3 vertices[3] = vec3[3](v1, v2, v3);
+        // For each triangle, update the distance if the ray hits.
+        for (int i = 0; i < textureSize(sceneVertices, 0).y; i++) {
+            // Load triangle
+            vec3 v1 = getSceneData(0, i).xyz;
+            vec3 v2 = getSceneData(1, i).xyz;
+            vec3 v3 = getSceneData(2, i).xyz;
+            vec3 triangle[3] = vec3[3](v1, v2, v3);
 
-            // float curDist = hitTriangle(vertices, p, dir, eps);
-            float curDist = hitTriangle(vertices, p, dir, eps);
-            // return vec4(curDist, 0., 0., 1.);
-            if ((distMin < 0.0) || (curDist < distMin)) {
-                if ((curDist > 0.0 + eps) && (curDist <= maxDist + eps) ) {
-                    distMin = curDist;
-                    best_i = i;
-                }
+            // Update best triangle based on rayTriIntersect
+            float dist = rayTriIntersect(triangle, point, dir);
+            if (dist > 0. && dist < minDist) {
+                minDist = dist;
+                best_i = i;
             }
         }
-        // return vec4(abs(best_i), 0., 0., 1.);
-        if (distMin > 0. && distMin <= maxDist + eps) {
-            vec4 color = texture2D(sceneVertices, vec2(3, best_i));
-            return color;
-        }
 
+        // If a triangle was hit, closest triangle color is shown
+        if (minDist < distThreshold) return getSceneData(3, best_i);
 
-        
-        return vec4(best_i, 0., 0., 1.);
+        // If no triangles were hit, return the background color
+        return vec4(sceneBackground, 1.);
     }
 
     vec4 nonLinearRayCast() {
         float t = 0.;
         vec4 color = vec4(0., 0., 0., 1.);
-        float deltaT = 1.;
-        float eps = 0.0000001;
-        while ( t <= 5.) {
-            vec3 curP;
-            vec3 curV;
-            if (t == 0.) {
-                curP = cameraPos;
-                curV = normalize(focusVector);
-            }
-            else {
-                vec3 newPV[2] = expMap(curP, curV, deltaT);
-                curP = newPV[0];
-                curV = newPV[1];
-            } 
-            color = colOnHit(curP, curV, 100000., eps);
-            if (color != vec4(0., 0., 0., 1.)) {
-                break;
-            }
-            t += deltaT;
+
+        vec3 curP = cameraPos;
+        vec3 curV = normalize(focusVector);
+
+        float stepsize = maxRayDistance / maxIterations;
+        for (float i = 0.; i < maxIterations; i++) {
+            vec3 newPV[2] = rayTransform(curP, curV, stepsize);
+            curP = newPV[0];
+            curV = newPV[1];
+
+            color = colorOnHit(curP, curV, maxSenseDistance);
+            if (color != vec4(sceneBackground, 1.)) break;
         }
         return color;
     }
 
     void main() {
-        gl_FragColor = T7linearRayCollisionWithFirstTriangle();
+        gl_FragColor = nonLinearRayCast();
     }
 
     /**** Unit test functions ****/
-
-    /* 
-        As reminder, below are the variables:
-
-        varying vec2 textureCoords;
-        uniform float time;
-        uniform vec3 testcolor;
-
-        varying vec3 focusVector;
-        uniform sampler2D sceneVertices;
-        uniform vec3 cameraPos;
-        uniform vec3 cameraLook;
-        uniform vec3 camearUp;
-    */
 
     vec4 displayError(int code) {
         if (code == 1) return vec4(1.0, 0.0, 0.0, 1.0);
@@ -191,29 +215,34 @@ export function fShaderRaycast() {
         return vec4(v.x, v.y, v.z, 1.0);
     }
 
+    // Verifies animatable stereo vision
     vec4 T1testColorTime() {
         vec3 colorsc = testcolor * textureCoords.x * textureCoords.y;
         return vec4(colorsc, time); 
     }
 
+    // Verifies focusVector normalization process
     vec4 T2focusVectorNormalized() {
         vec3 focusVectorN = normalize(focusVector);
         float fvlen = length(focusVectorN);
         return displayScalar(fvlen);
     }
 
+    // Verifies focusVector sweep
     vec4 T3angleFromLookAt() {
         vec3 focusVectorN = normalize(focusVector);
         float cosA = dot(focusVectorN, cameraLook);
         return displayScalar(cosA);
     }
 
+    // Verifies camera look vector
     vec4 T4angleFromNegativeZ() {
         vec3 focusVectorN = normalize(focusVector);
         float cosA = dot(focusVectorN, vec3(0.0, 0.0, -1.0));
         return displayScalar(cosA);
     }
 
+    // Verifies camera DoF values
     vec4 T5cameraPosTest() {
         vec3 color;
         color.x = cameraPos.x;
@@ -224,27 +253,60 @@ export function fShaderRaycast() {
         return displayTriple(normalize(color));
     }
 
+    // Should show a triangle on screen with a blue background
+    // Verifies rayTriIntersect function
     vec4 T6linearRayCollisionWithHardcodedTriangle() {
         vec3 triangle[3];
-        triangle[0] = vec3(1.0, 1.0, -9.0);
-        triangle[1] = vec3(1.0, -2.0, -9.0);
-        triangle[2] = vec3(-2.0, 1.0, -9.0);
-        vec3 singleCamPos = vec3(0.0, 0.0, 0.0);
-        float dist = hitTriangle(triangle, singleCamPos, cameraLook, 0.0000001);
-        if (dist == -1.) return displayError(2);
+        triangle[0] = vec3(100.0, 100.0, -300.0);
+        triangle[1] = vec3(100.0, -100.0, -300.0);
+        triangle[2] = vec3(100.0, 100.0, -500.0);
+
+        if (abs(cameraPos.x) != 32.) return displayError(1);
+        if (cameraPos.y != 0.) return displayError(1);
+        if (cameraPos.z != 0.) return displayError(1);
+
+        if (cameraLook.x != 0.) return displayError(2);
+        if (cameraLook.y != 0.) return displayError(2);
+        if (cameraLook.z != -1.) return displayError(2);
+
+        float dist = rayTriIntersect(triangle, cameraPos, focusVector);
+        if (dist <= 0.) return displayError(3);
+        else return displayScalar(dist);
+    }
+    
+    // Changing triID should change which triangle is being rendered.
+    // Verifies DataTexture retrieval process
+    vec4 T7linearRayCollisionWithOneTriangle() {
+        int triID = 1;
+        vec3 v1 = getSceneData(0, triID).xyz;
+        vec3 v2 = getSceneData(1, triID).xyz;
+        vec3 v3 = getSceneData(2, triID).xyz;
+        vec3 triangle[3] = vec3[3](v1, v2, v3);
+
+        float dist = rayTriIntersect(triangle, cameraPos, focusVector);
+        if (dist <= 0.) return displayError(3);
         else return displayScalar(dist);
     }
 
-    vec4 T7linearRayCollisionWithFirstTriangle() {
-        return vec4(0.0, 0.0, 0.0, 1.0);
+    // Should render the full scene in white and blue
+    // Verifies DataTexture iteration
+    vec4 T8linearRayCollisionWithAllTriangles() {
+        for (int i = 0; i < textureSize(sceneVertices, 0).y; i++) {
+            vec3 v1 = getSceneData(0, i).xyz;
+            vec3 v2 = getSceneData(1, i).xyz;
+            vec3 v3 = getSceneData(2, i).xyz;
+            vec3 triangle[3] = vec3[3](v1, v2, v3);
+
+            float dist = rayTriIntersect(triangle, cameraPos, focusVector);
+            if (dist > 0.) return displayScalar(dist);
+        }
+        return displayError(3);
     }
 
-    vec4 T8linearRayDistanceWithFirstTriangle() {
-        return vec4(0.0, 0.0, 0.0, 1.0);
-    }
-
-    vec4 T9linearRayCollisionWithAllTriangles() {
-        return vec4(0.0, 0.0, 0.0, 1.0);
+    // Should render the full scene with colors
+    // Verifies colorOnHit
+    vec4 T9linearRayPaintingWithAllTriangles() {
+        return colorOnHit(cameraPos, focusVector, 1000.);
     }
 
     // Should show a radial gradient that's darker on the edges

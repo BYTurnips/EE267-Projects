@@ -3,13 +3,13 @@
  */
 import * as THREE from 'three';
 
-const numBoxes = 100
 let theta = 0;      // Current angle of virtualCamera on orbit
-const rad = 5;      // Radius of orbit of virtualCamera
+const rad = 400;      // Radius of orbit of virtualCamera
 
 export class VirtualWorld {
     // Scene variable
     scene = null;
+    bgcolor = new THREE.Color("black");
 
     // Camera variable
     camera = null;
@@ -22,39 +22,28 @@ export class VirtualWorld {
 
     constructor() {
         /******** Build the Scene *******/
-        // this.makeRandomBoxScene()
-        this.makeBasicBoxScene(0, 0, -400, 200)
+        // this.makeRandomBoxScene(10)
+        this.makeBasicBoxScene(0, 0, 0, 200)
 
         /******** Place the Camera *******/
         this.initCamera(window.innerWidth / window.innerHeight)
-        this.translateCamera(0, 0, 0)
+        this.translateCamera(0, 0, 400)
 
         /******** Update the Scene Buffers *******/
         this.updateSceneData()
 
-        console.log(this.triangleData)
+        this.debug()
     }
 
     debug() {
-        // Create a box geometry
-        let a = new THREE.Vector3();
-        let b = new THREE.Vector3();
-        let c = new THREE.Vector3();
-        const boxGeometry = new THREE.BoxGeometry();
-        let pos = boxGeometry.attributes.position;
-        let idx = boxGeometry.index;
-        let faces = idx.count / 3;
-        let ct = 0;
-        for (let i = 0; i < faces; i++) {
-            a.fromBufferAttribute(pos, idx.getX(i * 3 + 0));
-            b.fromBufferAttribute(pos, idx.getX(i * 3 + 1));
-            c.fromBufferAttribute(pos, idx.getX(i * 3 + 2));
-            console.log(a)
-            console.log(b)
-            console.log(c)
-            ct += 3
+        const D = this.triangleData
+        for (let i = 0; i < D.length; i += 16) {
+            console.log(
+                "V1: ", D[i], D[i + 1], D[i + 2],
+                "V2: ", D[i + 4], D[i + 5], D[i + 6],
+                "V3: ", D[i + 8], D[i + 9], D[i + 10]
+            )
         }
-        console.log("This many points:", ct)
     }
 
     initCamera(aspect) {
@@ -68,7 +57,7 @@ export class VirtualWorld {
     }
 
     orbitCamera() {
-        theta += 0.1;
+        theta += 0.5;
         const cam = this.camera
         cam.position.x = rad * Math.sin(THREE.MathUtils.degToRad(theta));
         cam.position.y = rad * Math.sin(THREE.MathUtils.degToRad(theta));
@@ -77,16 +66,14 @@ export class VirtualWorld {
     }
 
     // Populate the scene with random boxes
-    makeRandomBoxScene() {
+    makeRandomBoxScene(numBoxes) {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x000000);
+        this.scene.background = this.bgcolor;
 
         const boxgeo = new THREE.BoxGeometry();
 
         for (let i = 0; i < numBoxes; i++) {
-            const matcolor = Math.random() * 0xffffff
-            const object = new THREE.Mesh(boxgeo,
-                new THREE.MeshBasicMaterial({ color: matcolor }));
+            const object = new THREE.Mesh(boxgeo, this.makeBoxMaterials());
 
             object.position.x = Math.random() * 20 - 10;
             object.position.y = Math.random() * 20 - 10;
@@ -107,12 +94,11 @@ export class VirtualWorld {
     // Add single box for debug
     makeBasicBoxScene(x, y, z, scale) {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x000000);
+        this.scene.background = this.bgcolor;
 
         const boxgeo = new THREE.BoxGeometry(scale, scale, scale, 1, 1, 1);
 
-        const debugobj = new THREE.Mesh(boxgeo,
-            new THREE.MeshBasicMaterial({ color: 0xC00C80 }));
+        const debugobj = new THREE.Mesh(boxgeo, this.makeBoxMaterials() );
         debugobj.position.x = x;
         debugobj.position.y = y;
         debugobj.position.z = z;
@@ -141,34 +127,42 @@ export class VirtualWorld {
 
                 const positions = obj.geometry.getAttribute('position');
                 const geoindex = obj.geometry.index
-                
+                const materials = obj.material
+
                 let v1 = new THREE.Vector3();
                 let v2 = new THREE.Vector3();
                 let v3 = new THREE.Vector3();
-                for (let i = 0; i < geoindex.count; i += 3) {
-                    this.numTriangles += 1;
+                // Traverse each face group to get the correct material for each triangle
+                obj.geometry.groups.forEach(group => {
+                    const start = group.start;
+                    const count = group.count;
+                    const materialIndex = group.materialIndex;
+                    const material = Array.isArray(materials) ?
+                        materials[materialIndex] : materials;
+                    const color = material.color;
 
-                    const color = obj.material.color;
+                    for (let i = start; i < start + count; i += 3) {
+                        this.numTriangles += 1;
 
-                    v1.fromBufferAttribute(positions, geoindex.getX(i + 0))
-                    const v1w = obj.localToWorld(v1)
+                        v1.fromBufferAttribute(positions, geoindex.getX(i + 0));
+                        const v1w = obj.localToWorld(v1.clone());
 
-                    v2.fromBufferAttribute(positions, geoindex.getX(i + 1))
-                    const v2w = obj.localToWorld(v2)
+                        v2.fromBufferAttribute(positions, geoindex.getX(i + 1));
+                        const v2w = obj.localToWorld(v2.clone());
 
-                    v3.fromBufferAttribute(positions, geoindex.getX(i + 2))
-                    const v3w = obj.localToWorld(v3)
+                        v3.fromBufferAttribute(positions, geoindex.getX(i + 2));
+                        const v3w = obj.localToWorld(v3.clone());
 
-                    // Push vertices
-                    this.triangleData.push(v1w.x, v1w.y, v1w.z, 1.0);
-                    this.triangleData.push(v2w.x, v2w.y, v2w.z, 1.0);
-                    this.triangleData.push(v3w.x, v3w.y, v3w.z, 1.0);
+                        // Push vertices
+                        this.triangleData.push(v1w.x, v1w.y, v1w.z, 1.0);
+                        this.triangleData.push(v2w.x, v2w.y, v2w.z, 1.0);
+                        this.triangleData.push(v3w.x, v3w.y, v3w.z, 1.0);
 
-                    // Push color
-                    this.triangleData.push(color.r, color.g, color.b, 1.0);
-                }
+                        // Push color
+                        this.triangleData.push(color.r, color.g, color.b, 1.0);
+                    }
+                })
             }
-
         });
 
         // Pack triangle data into a DataTexture
