@@ -100,7 +100,7 @@ export function fShaderRaycast() {
 
     // Wrapper function for all the ray transform functions;
     vec3[2] rayTransform(vec3 p, vec3 v, float deltaT) {
-        return expMapCircle(p, v, deltaT);
+        return expMap(p, v, deltaT);
     }
 
     /****** Primary raycast functions ******/
