@@ -1,5 +1,6 @@
 /*
- *  Generates the virtual scene features.
+ *  Generates the virtual world. Includes both the virtual scene 
+ *  and the virtual camera.
  */
 import * as THREE from 'three';
 
@@ -31,31 +32,21 @@ export class VirtualWorld {
 
         /******** Update the Scene Buffers *******/
         this.updateSceneData()
-
-        this.debug()
     }
 
-    debug() {
-        const D = this.triangleData
-        for (let i = 0; i < D.length; i += 16) {
-            console.log(
-                "V1: ", D[i], D[i + 1], D[i + 2],
-                "V2: ", D[i + 4], D[i + 5], D[i + 6],
-                "V3: ", D[i + 8], D[i + 9], D[i + 10]
-            )
-        }
-    }
-
+    // Set up the camera
     initCamera(aspect) {
         this.camera = new THREE.PerspectiveCamera(70, aspect, 0.1, 1000);
     }
 
+    // Move the camera to position x, y, z in virtual space
     translateCamera(x, y, z) {
         this.camera.position.x = x;
         this.camera.position.y = y;
         this.camera.position.z = z;
     }
 
+    // Rotate the camera around the scene to create a moving image
     orbitCamera() {
         theta += 0.5;
         const cam = this.camera
@@ -75,23 +66,19 @@ export class VirtualWorld {
         for (let i = 0; i < numBoxes; i++) {
             const object = new THREE.Mesh(boxgeo, this.makeBoxMaterials());
 
-            object.position.x = Math.random() * 20 - 10;
-            object.position.y = Math.random() * 20 - 10;
-            object.position.z = Math.random() * 40 - 20;
+            object.position.x = Math.random() * 100 - 50;
+            object.position.y = Math.random() * 100 - 50;
+            object.position.z = Math.random() * 100 - 50;
 
-            object.rotation.x = Math.random() * 2 * Math.PI;
-            object.rotation.y = Math.random() * 2 * Math.PI;
-            object.rotation.z = Math.random() * 2 * Math.PI;
-
-            object.scale.x = Math.random() * 2 + 1;
-            object.scale.y = Math.random() * 2 + 1;
-            object.scale.z = Math.random() * 2 + 1;
+            object.scale.x = Math.random() * 100 + 50;
+            object.scale.y = Math.random() * 100 + 50;
+            object.scale.z = Math.random() * 100 + 50;
 
             this.scene.add(object);
         }
     }
 
-    // Add single box for debug
+    // Add single large box for debug
     makeBasicBoxScene(x, y, z, scale) {
         this.scene = new THREE.Scene();
         this.scene.background = this.bgcolor;
@@ -106,7 +93,7 @@ export class VirtualWorld {
         this.scene.add(debugobj);
     }
 
-    // Make box materials
+    // Make box materials (each face is a random basic color)
     makeBoxMaterials() {
         const mats = []
         for (let i = 0; i < 6; i++) {
@@ -116,11 +103,12 @@ export class VirtualWorld {
         return mats;
     }
 
+    // Collect all the mesh data from the scene and pack it into a DataTexture
     updateSceneData() {
         this.numMeshes = 0;
         this.numTriangles = 0;
 
-        // Collect data about all mesh triangles in the scene
+        // Collect data about all mesh groups in the scene
         this.scene.traverse((obj) => {
             if (obj.isMesh & obj.geometry instanceof THREE.BufferGeometry) {
                 this.numMeshes += 1;
@@ -132,7 +120,8 @@ export class VirtualWorld {
                 let v1 = new THREE.Vector3();
                 let v2 = new THREE.Vector3();
                 let v3 = new THREE.Vector3();
-                // Traverse each face group to get the correct material for each triangle
+
+                // Traverse each group to get the correct material for each triangle
                 obj.geometry.groups.forEach(group => {
                     const start = group.start;
                     const count = group.count;

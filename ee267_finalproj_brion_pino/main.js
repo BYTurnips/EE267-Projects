@@ -1,5 +1,6 @@
 /*
- *  Primary driver file for the application.
+ *  Primary driver file for the application. Handles initialization and
+ *  operation of the real scene and connects all the components together
  */
 
 import * as THREE from 'three';
@@ -60,6 +61,7 @@ function init() {
 
     const bgcol = new THREE.Vector3().fromArray(virtualWorld.bgcolor.toArray())
 
+    // Initializes the custom shader material to connect the raycast shaders
     const matQuad = new THREE.ShaderMaterial({
         uniforms: {
             time: { value: 1 },
@@ -90,7 +92,7 @@ function init() {
 
     realSceneL.add(fullQuadL);
     realSceneR.add(fullQuadR);
-
+    
     realCameraL.position.z = 1;
     realCameraR.position.z = 1;
     realCameraL.aspect = window.innerWidth / 2 / window.innerHeight;
@@ -102,6 +104,7 @@ function init() {
     window.addEventListener('resize', onWindowResize);
 }
 
+// Update parameters of the virtual scene for use by the shader
 function updateQuadUniforms() {
     const cameraLook = new THREE.Vector3(); 
     virtualWorld.camera.getWorldDirection(cameraLook);
@@ -126,6 +129,7 @@ function updateQuadUniforms() {
         fullQuadL.material.uniforms.time.value = 0
 }
 
+// Changes aspect ratio based onWindowResize.
 function onWindowResize() {
     realCameraL.aspect = window.innerWidth / 2 / window.innerHeight;
     realCameraL.updateProjectionMatrix();
@@ -134,22 +138,26 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+// Orbit the camera every 10 ms (transforming virtual world)
 setInterval(() => {
     virtualWorld.orbitCamera();
 }, 10);
 
+// Animate the scene
 function animate() {
     requestAnimationFrame(animate);
     stats.update();
 
-    /******** Virtual Scene Transformations ********/
+    // Update uniforms to reflect virtual world parameters
     updateQuadUniforms();
 
-    /**************** Scene Render ****************/
+    // Render Scene
     render('real')
 }
 
+// Render the scene
 function render(scenetype) {
+    // Real case to view the stereo quads
     if (scenetype == 'real') {
         renderer.setScissorTest(true);
 
@@ -166,6 +174,7 @@ function render(scenetype) {
     
         renderer.setScissorTest(false);
     }
+    // Debug case to view the virtual scene rather than the quads
     else if (scenetype == 'virtual') {
         renderer.render(virtualWorld.scene, virtualWorld.camera)
     }

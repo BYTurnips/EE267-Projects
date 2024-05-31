@@ -48,7 +48,7 @@ export function fShaderRaycast() {
         return vec3[2](p + v * deltaT, v);
     }
 
-    // flow along zero curvature curves of S^1 x RR (cylinder)
+    // Flow along zero curvature curves of S^1 x RR (cylinder)
     vec3[2] expMapCircle(vec3 p, vec3 v, float deltaT) {
         float R = 600.;
         vec2 r = normalize(vec2(-v.y, v.x)) * R;
@@ -65,6 +65,7 @@ export function fShaderRaycast() {
         return vec3[2](new_pxyz, new_vxyz);
     }
 
+    // Curves follow a hyperbolic space H^1 x RR
     vec3[2] expMapPoincareHalf(vec3 p, vec3 v, float deltaT) {
         vec2 pHyper = p.xy;
         vec2 vHyper = v.xy;
@@ -128,7 +129,8 @@ export function fShaderRaycast() {
         return vec3[2](p + v * deltaT, newV);
     }
 
-    // Wrapper function for all the ray transform functions;
+    // Wrapper function for all the ray transform functions.
+    // Try replacing the return function with one of the other ones above!
     vec3[2] rayTransform(vec3 p, vec3 v, float deltaT) {
         return expMapCircle(p, v, deltaT);
     }
@@ -144,26 +146,25 @@ export function fShaderRaycast() {
         vec3 h = cross(dir, e2);
         float a = dot(e1, h);
 
-        if ( abs(a) < 0.0001 ) {
-            return -1.;
-        }
-        else {
-            float f = 1. / a;
-            vec3 s = point - trig[0];
-            float u = f * dot(s, h);
-            if (u < 0. || u > 1.) {
-                return -0.7;
-            }
-            vec3 q = cross(s, e1);
-            float v = f * dot(dir, q);
-            if (v < 0. || (u + v > 1.)) {
-                return -0.3;
-            }
-            float dist = f * dot(e2, q);
-            if (dist > 0.0001) {
-                return dist;
-            }
-        }
+        // Ray is parallel
+        if ( abs(a) < 0.0001 ) return -1.;
+
+        float f = 1. / a;
+        vec3 s = point - trig[0];
+        float u = f * dot(s, h);
+
+        // Ray is away from triangle
+        if (u < 0. || u > 1.) return -0.7;
+        vec3 q = cross(s, e1);
+        float v = f * dot(dir, q);
+
+        // Ray is away from triangle
+        if (v < 0. || (u + v > 1.)) return -0.3;
+        
+        float dist = f * dot(e2, q);
+        if (dist > 0.0001) return dist;
+
+        // Distance is negative
         return -1.;
 
         // /****** Get triangles' plane and determine ray intersection ******/
@@ -187,6 +188,7 @@ export function fShaderRaycast() {
         // else return -1.;
     }
 
+    // Helper function to read the DataTexture properly
     vec4 getSceneData(int columnID, int triangleID) {
         float tX = float(columnID) / float(textureSize(sceneVertices, 0).x);
         float tY = float(triangleID) / float(textureSize(sceneVertices, 0).y);
@@ -222,19 +224,23 @@ export function fShaderRaycast() {
         return vec4(sceneBackground, 1.);
     }
 
+    // Run the non-linear ray iteratively
     vec4 nonLinearRayCast() {
         float t = 0.;
-        vec4 color = vec4(0., 0., 0., 1.);
+        vec4 color = vec4(sceneBackground, 1.);
 
+        // Initialize ray to cameraPos and focusVector
         vec3 curP = cameraPos;
         vec3 curV = normalize(focusVector);
 
         for (float i = 0.; i < maxIterations; i++) {
+            // Transform Ray
             vec3 newPV[2] = rayTransform(
                 curP, curV, maxRayDistance / maxIterations);
             curP = newPV[0];
             curV = newPV[1];
 
+            // Shoot a linear ray to check for collision
             color = colorOnHit(curP, curV);
             if (color != vec4(sceneBackground, 1.)) break;
         }
@@ -246,6 +252,27 @@ export function fShaderRaycast() {
     }
 
     /**** Unit test functions ****/
+    /*
+    * Unit tests in fshader:
+    *  1. Animated test shader
+    *  2. Check if focusVector is normalized
+    *  3. Check if focusVector is within a certain angle of Look Direction
+    *  4. Check if focusVector is within a certain angle of the camera in 
+    *      world coordinates (by inspection)
+    *  5. Check for camera position
+    *  Linear ray collision with a hardcoded triangle in space
+    *      6. Check for presence with the cameraLook
+    *      7. Check for presence with the focusVector
+    *      8. Check for distance with the focusVector
+    *  - Linear ray collision with first triangle in mesh 
+    *      (make sure it's facing the camera)
+    *  - Linear ray collision with all triangles in mesh
+    *  - Iterative ray casting produces distance map (should be radial gradient)
+    *  - Iterative non-linear ray casting produces resulting distance map
+    *  - Iterative linear ray casting with a hardcoded triangle in space
+    *  - Iterative linear ray casting with all triangles in mesh
+    *  - Custom ray casting function with all triangles in mesh
+    */
 
     vec4 displayError(int code) {
         if (code == 1) return vec4(1.0, 0.0, 0.0, 1.0);
