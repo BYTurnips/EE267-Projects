@@ -1,7 +1,7 @@
 # Final Project for EE 267 Spring 2024
-## Written by Brion Ye and Pino Cholsaipant
+### Written by Brion Ye (brionqiye@gmail.com) and Pino Cholsaipant (pschol@stanford.edu)
 
-### What it does
+## What it does
 This project aims to create a custom iterative ray casting engine for the purposes of exploring the consequences of exploring non-linear light rays.
 It is written purely using THREE.js and GLSL libraries. Take a look at our report for more information on the working principles!
 

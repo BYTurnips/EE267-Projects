@@ -23,7 +23,7 @@ export class VirtualWorld {
 
     constructor() {
         /******** Build the Scene *******/
-        // this.makeRandomBoxScene(10)
+        // this.makeRandomBoxScene(1)
         this.makeBasicBoxScene(0, 0, 0, 100)
 
         /******** Place the Camera *******/

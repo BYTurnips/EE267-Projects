@@ -77,7 +77,7 @@ function init() {
             sceneVertices: { value: virtualWorld.triangleDataTexture },
             sceneBackground: { value: bgcol },
 
-            maxIterations:  { value: 20. },
+            maxIterations:  { value: 10. },
             maxRayDistance: { value: 1000. },
         },
         vertexShader: vShaderRaycast(),
