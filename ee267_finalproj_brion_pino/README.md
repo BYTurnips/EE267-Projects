@@ -3,7 +3,7 @@
 
 ## What it does
 This project aims to create a custom iterative ray casting engine for the purposes of exploring the consequences of exploring non-linear light rays.
-It is written purely using THREE.js and GLSL libraries. Take a look at our report for more information on the working principles!
+It is written purely using THREE.js and GLSL libraries. Take a look at our report for more information!
 
 ## Repository Anatomy
 This code was created from scratch without following any predefined template.
